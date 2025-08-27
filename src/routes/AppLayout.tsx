@@ -1,22 +1,26 @@
 import { Suspense } from "react";
-import { Outlet, NavLink } from "react-router-dom";
-function AppLayout() {
+import { Outlet } from "react-router-dom";
+import colors from "../styles/colors";
+import Loader from "../components/Loader/Loader";
+
+export default function AppLayout() {
   return (
-    <>
-      <nav style={{ display: "flex", gap: 12, padding: 12 }}>
-        <NavLink to="/" end>
-          Home
-        </NavLink>
-        <NavLink to="/about">About</NavLink>
-        <NavLink to="/users">Users</NavLink>
-      </nav>
-      <main style={{ padding: 16 }}>
-        <Suspense fallback={<div>Loading…</div>}>
+    <main
+      style={{
+        minHeight: "100dvh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+        background: colors.appBg,
+        color: colors.black,
+      }}
+    >
+      <div style={{ width: "min(900px, 100%)" }}>
+        <Suspense fallback={<Loader label="Loading…" />}>
           <Outlet />
         </Suspense>
-      </main>
-    </>
+      </div>
+    </main>
   );
 }
-
-export default AppLayout;

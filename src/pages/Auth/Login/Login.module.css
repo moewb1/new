@@ -1,0 +1,112 @@
+.wrapper {
+  width: min(600px, 100%);
+  margin: 0 auto;
+  padding: 36px 22px 48px;
+  display: grid;
+  gap: 16px; /* header margin handles the big spacing */
+  color: #000;
+}
+
+/* Top title centered with HUGE space below */
+.header {
+  text-align: center;
+  margin-bottom: clamp(56px, 12vw, 60px); /* big gap below the title */
+}
+.h1 { margin: 0; font-size: 30px; font-weight: 900; letter-spacing: -0.02em; }
+
+/* Intro block sits directly above the form, left-aligned */
+.intro {
+  display: grid;
+  gap: 6px;
+  text-align: left;
+  justify-self: start;     /* keep to the left edge */
+  margin-bottom: 10px;     /* small gap before the box */
+}
+.h2 { margin: 0; font-size: 18px; font-weight: 800; opacity: .95; }
+.desc { margin: 0; opacity: 0.8; font-weight: 600; }
+
+/* Form box */
+.box {
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+  border-radius: 16px;
+  background: rgb(249, 249, 249);
+  border: 1px solid rgba(0,0,0,0.06);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+/* Inputs */
+.inputWrap {
+  display: block;
+  background: #fff;
+  border: 2px solid rgba(0,0,0,0.08);
+  border-radius: 14px;
+  padding: 10px;
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+.inputWrap:hover { border-color: rgba(0,0,0,0.18); }
+.inputWrap:focus-within {
+  border-color: rgb(169, 174, 155);
+  box-shadow: 0 0 0 3px rgba(169,174,155,0.18);
+  transform: translateY(-1px);
+}
+
+.input {
+  width: 100%;
+  padding: 12px 12px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #000;
+  font-weight: 600;
+}
+.input::placeholder { color: rgba(0,0,0,0.55); }
+
+/* Forgot password */
+.forgotRow { display: flex; justify-content: flex-end; margin-top: -6px; }
+.forgotBtn {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: #000;
+  font-weight: 800;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* CTA */
+.cta {
+  margin-top: 6px;
+  padding: 14px 18px;
+  border: 0;
+  border-radius: 12px;
+  font-weight: 900;
+  letter-spacing: .2px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+.cta:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(0,0,0,0.15); }
+
+/* Social */
+.socialBlock { display: grid; gap: 12px; justify-items: center; margin-top: 4px; }
+.socialTitle { font-weight: 800; opacity: 0.9; }
+.socialRow { display: flex; gap: 14px; }
+
+.socialBtn {
+  width: 48px; height: 48px;
+  display: grid; place-items: center;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.10);
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+.socialBtn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(0,0,0,0.12); }
+.logo { width: 22px; height: 22px; object-fit: contain; display: block; }
+
+/* Footer */
+.foot { margin: 0; text-align: center; opacity: 0.9; font-weight: 600; }
+.link { color: #000; font-weight: 900; text-decoration: underline; }
