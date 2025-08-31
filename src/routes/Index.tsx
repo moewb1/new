@@ -6,6 +6,8 @@ import AppLayout from "./AppLayout";
 const AuthEntry = lazy(() => import("@/pages/Auth/Entry/AuthEntry"));
 const Login     = lazy(() => import("@/pages/Auth/Login/Login"));
 const Signup    = lazy(() => import("@/pages/Auth/Signup/Signup"));
+const Otp    = lazy(() => import("@/pages/Auth/Otp/Otp"));
+const ForgetPassword     = lazy(() => import("@/pages/Auth/Login/ForgetPassword"));
 
 export const router = createBrowserRouter([
   {
@@ -18,10 +20,13 @@ export const router = createBrowserRouter([
       </div>
     ),
     children: [
-      { index: true, element: <AuthEntry /> },   // 👈 MAIN SCREEN = Auth
+      { index: true, element: <AuthEntry /> },
       { path: "auth/login", element: <Login /> },
       { path: "auth/signup", element: <Signup /> },
+      { path: "auth/forgot-password", element: <ForgetPassword /> },
+      { path: "auth/otp", element: <Otp /> },
       { path: "*", element: <div>404 – Not Found</div> },
+      
     ],
   },
 ]);

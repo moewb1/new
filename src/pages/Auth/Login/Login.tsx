@@ -1,6 +1,6 @@
 import React from "react";
 import styles from "./Login.module.css";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import colors from "@/styles/colors";
 
 /* reuse the same assets you added for signup */
@@ -8,6 +8,37 @@ import appleLogo from "@/assets/Apple_logo.svg";
 import googleLogo from "@/assets/Google_logo.svg.webp";
 
 export default function Login() {
+  const navigate = useNavigate();
+
+  const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
+
+  const [touchedEmail, setTouchedEmail] = React.useState(false);
+  const [touchedPassword, setTouchedPassword] = React.useState(false);
+  const [submitted, setSubmitted] = React.useState(false);
+  const [submitting, setSubmitting] = React.useState(false);
+
+  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const isValidPass = password.length >= 6;
+  const formValid = isValidEmail && isValidPass;
+
+  const showEmailError = (touchedEmail || submitted) && !isValidEmail;
+  const showPassError = (touchedPassword || submitted) && !isValidPass;
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitted(true);
+    if (!formValid || submitting) return;
+
+    // TODO: call your real login API here
+    setSubmitting(true);
+    await new Promise((r) => setTimeout(r, 700)); // simulate
+    setSubmitting(false);
+
+    // 2FA step -> go to OTP
+    navigate(`/auth/otp?email=${encodeURIComponent(email)}`);
+  };
+
   return (
     <section className={styles.wrapper}>
       {/* Top title only */}
@@ -23,37 +54,67 @@ export default function Login() {
         </p>
       </div>
 
-      <form className={styles.box} onSubmit={(e) => e.preventDefault()}>
-        <label className={styles.inputWrap}>
+      <form className={styles.box} onSubmit={onSubmit} noValidate>
+        <label className={`${styles.inputWrap} ${showEmailError ? styles.inputError : ""}`}>
           <input
             className={styles.input}
             placeholder="Enter Your Mail"
             type="email"
             aria-label="Enter Your Mail"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onBlur={() => setTouchedEmail(true)}
+            autoComplete="email"
+            aria-invalid={showEmailError || undefined}
+            aria-describedby={showEmailError ? "email-error" : undefined}
+            required
           />
         </label>
+        {showEmailError && (
+          <p id="email-error" className={styles.error}>Please enter a valid email address.</p>
+        )}
 
-        <label className={styles.inputWrap}>
+        <label className={`${styles.inputWrap} ${showPassError ? styles.inputError : ""}`}>
           <input
             className={styles.input}
             placeholder="Enter Your Password"
             type="password"
             aria-label="Enter Your Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onBlur={() => setTouchedPassword(true)}
+            autoComplete="current-password"
+            aria-invalid={showPassError || undefined}
+            aria-describedby={showPassError ? "password-error" : undefined}
+            required
           />
         </label>
+        {showPassError && (
+          <p id="password-error" className={styles.error}>Password must be at least 6 characters.</p>
+        )}
 
         <div className={styles.forgotRow}>
-          <button type="button" className={styles.forgotBtn}>
-            Forget Your Password?
+          <button
+            type="button"
+            className={styles.forgotBtn}
+            onClick={() => navigate(`/auth/forgot-password${email ? `?email=${encodeURIComponent(email)}` : ""}`)}
+          >
+            Forgot Password?
           </button>
         </div>
 
         <button
           className={styles.cta}
           type="submit"
-          style={{ background: colors.accent, color: colors.white }}
+          style={{
+            background: colors.accent,
+            color: colors.white,
+            opacity: formValid && !submitting ? 1 : 0.6,
+          }}
+          disabled={!formValid || submitting}
+          aria-disabled={!formValid || submitting}
         >
-          Log In
+          {submitting ? "Logging In…" : "Log In"}
         </button>
       </form>
 
@@ -70,7 +131,7 @@ export default function Login() {
       </div>
 
       <p className={styles.foot}>
-        Not Registrar Yet?{" "}
+        Not Registered Yet?{" "}
         <Link to="/auth/signup" className={styles.link}>Sign Up</Link>
       </p>
     </section>

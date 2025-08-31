@@ -3,14 +3,14 @@
   margin: 0 auto;
   padding: 36px 22px 48px;
   display: grid;
-  gap: 16px; /* keep small; header margin adds the big visual spacing */
+  gap: 16px; 
   color: #000;
 }
 
 /* Centered title with HUGE space below */
 .header {
   text-align: center;
-  margin-bottom: clamp(56px, 12vw, 60px); /* big gap below the title */
+  margin-bottom: clamp(26px, 12vw, 20px); /* big gap below the title */
 }
 .h1 { margin: 0; font-size: 30px; font-weight: 900; letter-spacing: -0.02em; }
 
@@ -101,3 +101,16 @@
 /* foot */
 .foot { margin: 0; text-align: center; opacity: 0.9; font-weight: 600; }
 .link { color: #000; font-weight: 900; text-decoration: underline; }
+
+.error {
+  margin: -6px 0 8px;
+  color: #c62828;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* red outline when invalid */
+.inputError {
+  border-color: rgba(198, 40, 40, 0.5) !important;
+  box-shadow: 0 0 0 3px rgba(198, 40, 40, 0.12) !important;
+}

@@ -1,0 +1,97 @@
+.wrapper {
+  width: min(600px, 100%);
+  margin: 0 auto;
+  padding: 36px 22px 48px;
+  display: grid;
+  gap: 16px;
+  color: #000;
+}
+
+.header { text-align: center; margin-bottom: clamp(56px, 12vw, 60px); }
+.h1 { margin: 0; font-size: 30px; font-weight: 900; letter-spacing: -0.02em; }
+
+.intro { display: grid; gap: 6px; text-align: left; justify-self: start; margin-bottom: 10px; }
+.desc { margin: 0; opacity: 0.8; font-weight: 600; }
+
+.box {
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+  border-radius: 16px;
+  background: rgb(249, 249, 249);
+  border: 1px solid rgba(0,0,0,0.06);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+/* OTP slots */
+.otpWrap { display: grid; justify-items: center; margin: 6px 0 4px; }
+.otpContainer { width: 100%; }
+.slots { display: flex; gap: 10px; justify-content: center; }
+
+.slot {
+  width: 48px;
+  height: 58px;
+  border-radius: 12px;
+  background: #fff;
+  border: 2px solid rgba(0,0,0,0.08);
+  display: grid;
+  place-items: center;
+  position: relative;
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+.slot:hover { border-color: rgba(0,0,0,0.18); }
+.active {
+  border-color: rgb(169, 174, 155);
+  box-shadow: 0 0 0 3px rgba(169,174,155,0.18);
+  transform: translateY(-1px);
+}
+
+.char { font-size: 28px; font-weight: 900; line-height: 1; }
+.placeholder { opacity: 0.25; font-size: 28px; font-weight: 900; line-height: 1; }
+
+.caret {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.caret::after {
+  content: "";
+  width: 2px;
+  height: 28px;
+  background: #000;
+  animation: caret-blink 1.2s ease-out infinite;
+}
+@keyframes caret-blink { 0%,70%,100% { opacity: 1 } 20%,50% { opacity: 0 } }
+
+/* CTA */
+.cta {
+  margin-top: 6px;
+  padding: 14px 18px;
+  border: 0;
+  border-radius: 12px;
+  font-weight: 900;
+  letter-spacing: .2px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+.cta:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(0,0,0,0.15); }
+
+/* Resend */
+.resendRow { text-align: center; margin-top: 2px; }
+.resendHint { opacity: .9; font-weight: 600; }
+.resendBtn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-weight: 900;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Info + footer */
+.info { margin: 0; text-align: center; opacity: 0.9; font-weight: 600; }
+.foot { margin: 0; text-align: center; opacity: 0.9; font-weight: 600; }
+.link { color: #000; font-weight: 900; text-decoration: underline; }
