@@ -25,7 +25,7 @@ export default function ProviderServices() {
   // Guard: if not provider, skip to bank
   useEffect(() => {
     if (profile?.role !== "provider") {
-      navigate("/auth/BankDetails");
+      navigate("/home");
     }
   }, [profile, navigate]);
 
@@ -43,7 +43,7 @@ export default function ProviderServices() {
     setSubmitted(true);
     if (selected.length === 0) return;
     localStorage.setItem("provider.services", JSON.stringify(selected));
-    navigate("/auth/BankDetails");
+    navigate("/home");
   };
 
   return (

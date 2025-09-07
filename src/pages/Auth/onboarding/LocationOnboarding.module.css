@@ -135,6 +135,7 @@
 
 /* map column */
 .mapCol {
+  min-width: 500px;
   position: relative;
   border-radius: 20px;
   overflow: hidden;
@@ -169,6 +170,7 @@
 /* address chip overlay at bottom */
 .addrChip {
   position: absolute;
+  font-size: 12px;
   left: 12px;
   right: 12px;
   bottom: 12px;
@@ -179,11 +181,122 @@
   background: rgba(255,255,255,0.94);
   border: 1px solid rgba(0,0,0,0.06);
   box-shadow: 0 10px 28px rgba(0,0,0,0.12);
-  max-height: 70px;
+  max-height: 300px;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+
 }
 
 /* footer note */
 .footNote { margin: 2px 0 0; opacity: .85; font-weight: 500; }
+
+/* Sections */
+.sectionHead { display: grid; gap: 2px; }
+.sectionTitle { margin: 0; font-weight: 800; font-size: 18px; }
+.sectionSub   { margin: 0; opacity: .75; font-weight: 600; }
+
+/* Segmented control */
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  background: #f8f8f8;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+.segBtn {
+  appearance: none;
+  border: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-weight: 800;
+  background: transparent;
+  cursor: pointer;
+}
+.segBtn[data-active="true"] {
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.08) inset, 0 2px 8px rgba(0,0,0,0.06);
+  border: 1px solid rgba(0,0,0,0.06);
+}
+
+/* Panels */
+.panel {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+
+/* Inputs */
+.inputLg {
+  width: 100%;
+  padding: 12px 12px;
+  border: 2px solid rgba(0,0,0,0.08);
+  border-radius: 12px;
+  background: #fff;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+.inputLg:hover { border-color: rgba(0,0,0,0.18); }
+.inputLg:focus {
+  border-color: rgb(169, 174, 155);
+  box-shadow: 0 0 0 3px rgba(169,174,155,0.18);
+  transform: translateY(-1px);
+}
+
+.help { margin: 4px 0 0; font-size: 12px; opacity: .7; font-weight: 600; }
+
+/* Quick actions row */
+.quickRow { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Selected summary card */
+.selectedCard {
+  border: 1px solid rgba(0,0,0,0.06);
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.06);
+}
+.selectedRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.selectedTitle { font-size: 18px; font-weight: 900; letter-spacing: -0.01em; }
+.selectedMeta  { font-size: 13px; opacity: .85; font-weight: 600; color: #4b5563; margin-top: 2px; }
+.copyBtn {
+  appearance: none;
+  border: 1px solid rgba(0,0,0,0.1);
+  background: #fff;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+
+
+.mapCol {
+  position: relative; /* already set in your CSS, but important */
+}
+
+.mapLoader {
+  position: absolute;
+  inset: 0;
+  z-index: 600;               /* above the map & toolbar */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-direction: column;
+  background: rgba(255,255,255,0.65);
+  backdrop-filter: blur(4px);
+  border-radius: 20px;        /* match MapContainer radius */
+  transition: opacity 180ms ease;
+}
+
+.mapLoaderText {
+  font-weight: 800;
+  font-size: 14px;
+  color: #111827;
+  opacity: 0.9;
+}

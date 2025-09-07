@@ -14,6 +14,7 @@ const LocationOnboarding    = lazy(() => import("@/pages/Auth/onboarding/Locatio
 const IdentityOnboarding  = lazy(() => import("@/pages/Auth/onboarding/IdentityOnboarding"));
 const ProviderServices    = lazy(() => import("@/pages/Auth/onboarding/ProviderServices"));
 const BankDetails         = lazy(() => import("@/pages/Auth/onboarding/BankDetails"));
+const Chat         = lazy(() => import("@/pages/Chat/Chat"));
 
 export const router = createBrowserRouter([
   {
@@ -39,6 +40,7 @@ export const router = createBrowserRouter([
       { path: "auth/BankDetails", element: <BankDetails /> },
 
       { path: "home", element: <Home  /> },
+      { path: "chat", element: <Chat  /> },
       { path: "*", element: <div>404 – Not Found</div> },
     ],
   },

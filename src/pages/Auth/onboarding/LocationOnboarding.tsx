@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./LocationOnboarding.module.css";
+import { ClipLoader } from "react-spinners";
 import {
   MapContainer,
   TileLayer,
@@ -148,6 +149,8 @@ export default function LocationOnboarding() {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [mode, setMode] = useState<'search' | 'paste' | 'coords'>('search');
+  const [mapLoading, setMapLoading] = useState(true);
 
   // Debounced forward geocoding
   useEffect(() => {
@@ -360,165 +363,168 @@ export default function LocationOnboarding() {
       </header>
 
       <div className={styles.grid}>
+
         {/* LEFT: Controls */}
         <div className={styles.controls}>
-          {/* Search */}
-          <div className={styles.row}>
-            <label className={styles.label}>
-              <span className={styles.emoji}>🔎</span> Search address /
-              place
-            </label>
-            <div className={styles.searchWrap}>
-              <input
-                className={styles.input}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="e.g. Dubai Mall"
-                onFocus={() =>
-                  search.trim().length >= 3 && setSearchOpen(true)
-                }
-                onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
-              />
-              {searchOpen && (
-                <div className={styles.suggest}>
-                  {searching ? (
-                    <div className={styles.suggestItem}>Searching…</div>
-                  ) : suggestions.length ? (
-                    suggestions.map((s, i) => (
-                      <button
-                        key={s.display_name + i}
-                        type="button"
-                        className={styles.suggestItem}
-                        onClick={() => {
-                          const p = clampLatLng({
-                            lat: parseFloat(s.lat),
-                            lng: parseFloat(s.lon),
-                          });
-                          setCurrent(p);
-                          setLatInput(p.lat.toFixed(6));
-                          setLngInput(p.lng.toFixed(6));
-                          setSearchOpen(false);
-                          setError("");
-                        }}
-                      >
-                        {s.display_name}
-                      </button>
-                    ))
-                  ) : (
-                    <div className={styles.suggestItem}>No results</div>
-                  )}
-                </div>
-              )}
-            </div>
+          {/* Step heading */}
+          <div className={styles.sectionHead}>
+            <h2 className={styles.sectionTitle}>Set your location</h2>
+            <p className={styles.sectionSub}>Pick on the map or use one of the methods below.</p>
           </div>
 
-          {/* Paste link/coords */}
-          <div className={styles.row}>
-            <label className={styles.label}>
-              <span className={styles.emoji}>📋</span> Paste Google Maps
-              link or “lat,lng”
-            </label>
-            <div className={styles.inline}>
-              <input
-                className={styles.input}
-                value={pasteField}
-                onChange={(e) => setPasteField(e.target.value)}
-                placeholder="https://maps.google.com/?q=25.2048,55.2708 or 25.2048, 55.2708"
-              />
-              <button
-                type="button"
-                className={styles.ghost}
-                onClick={applyPaste}
-              >
-                Use
-              </button>
-            </div>
-          </div>
-
-          {/* Manual lat/lng */}
-          <div className={styles.row2col}>
-            <div>
-              <label className={styles.label}>
-                <span className={styles.emoji}>🧭</span> Latitude
-              </label>
-              <input
-                className={styles.input}
-                value={latInput}
-                onChange={(e) => setLatInput(e.target.value)}
-                placeholder="e.g. 25.204800"
-                inputMode="decimal"
-              />
-            </div>
-            <div>
-              <label className={styles.label}>
-                <span className={styles.emoji}>🧭</span> Longitude
-              </label>
-              <input
-                className={styles.input}
-                value={lngInput}
-                onChange={(e) => setLngInput(e.target.value)}
-                placeholder="e.g. 55.270800"
-                inputMode="decimal"
-              />
-            </div>
-          </div>
-          <div className={styles.actionsInline}>
+          {/* Entry method picker */}
+          <div className={styles.segmented} role="tablist" aria-label="Entry method">
             <button
               type="button"
-              className={styles.secondary}
-              onClick={applyManualCoords}
+              className={styles.segBtn}
+              role="tab"
+              aria-selected={mode === "search"}
+              data-active={mode === "search"}
+              onClick={() => setMode("search")}
             >
-              Apply coordinates
+              Search
             </button>
             <button
               type="button"
-              className={styles.secondary}
-              onClick={resetToDubai}
+              className={styles.segBtn}
+              role="tab"
+              aria-selected={mode === "paste"}
+              data-active={mode === "paste"}
+              onClick={() => setMode("paste")}
             >
-              Reset to Dubai
+              Paste link
+            </button>
+            <button
+              type="button"
+              className={styles.segBtn}
+              role="tab"
+              aria-selected={mode === "coords"}
+              data-active={mode === "coords"}
+              onClick={() => setMode("coords")}
+            >
+              Coordinates
             </button>
           </div>
 
-          {/* Status */}
+          {/* Panels */}
+          {mode === "search" && (
+            <div className={styles.panel}>
+              <label className={styles.label}>Search address / place</label>
+              <div className={styles.searchWrap}>
+                <input
+                  className={styles.inputLg}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="e.g. Dubai Mall"
+                  onFocus={() => search.trim().length >= 3 && setSearchOpen(true)}
+                  onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
+                />
+                {searchOpen && (
+                  <div className={styles.suggest}>
+                    {searching ? (
+                      <div className={styles.suggestItem}>Searching…</div>
+                    ) : suggestions.length ? (
+                      suggestions.map((s, i) => (
+                        <button
+                          key={s.display_name + i}
+                          type="button"
+                          className={styles.suggestItem}
+                          onClick={() => {
+                            const p = clampLatLng({
+                              lat: parseFloat(s.lat),
+                              lng: parseFloat(s.lon),
+                            });
+                            setCurrent(p);
+                            setLatInput(p.lat.toFixed(6));
+                            setLngInput(p.lng.toFixed(6));
+                            setSearchOpen(false);
+                            setError("");
+                          }}
+                        >
+                          {s.display_name}
+                        </button>
+                      ))
+                    ) : (
+                      <div className={styles.suggestItem}>No results</div>
+                    )}
+                  </div>
+                )}
+              </div>
+              <p className={styles.help}>Tip: type at least 3 characters to see suggestions.</p>
+            </div>
+          )}
+
+          {mode === "paste" && (
+            <div className={styles.panel}>
+              <label className={styles.label}>Paste Google Maps link or “lat,lng”</label>
+              <div className={styles.inline}>
+                <input
+                  className={styles.inputLg}
+                  value={pasteField}
+                  onChange={(e) => setPasteField(e.target.value)}
+                  placeholder="https://maps.google.com/?q=25.2048,55.2708 or 25.2048, 55.2708"
+                />
+                <button type="button" className={styles.secondary} onClick={applyPaste}>
+                  Use
+                </button>
+              </div>
+              <p className={styles.help}>We’ll extract the coordinates if present.</p>
+            </div>
+          )}
+
+          {mode === "coords" && (
+            <div className={styles.panel}>
+              <label className={styles.label}>Enter coordinates</label>
+              <div className={styles.row2col}>
+                <input
+                  className={styles.inputLg}
+                  value={latInput}
+                  onChange={(e) => setLatInput(e.target.value)}
+                  placeholder="Latitude e.g. 25.204800"
+                  inputMode="decimal"
+                />
+                <input
+                  className={styles.inputLg}
+                  value={lngInput}
+                  onChange={(e) => setLngInput(e.target.value)}
+                  placeholder="Longitude e.g. 55.270800"
+                  inputMode="decimal"
+                />
+              </div>
+              <div className={styles.actionsInline}>
+                <button type="button" className={styles.secondary} onClick={applyManualCoords}>
+                  Apply
+                </button>
+                <button type="button" className={styles.ghost} onClick={resetToDubai}>
+                  Reset to Dubai
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Quick actions */}
+          <div className={styles.quickRow}>
+            <button type="button" className={styles.secondary} onClick={useMyLocation}>
+              Use my current location
+            </button>
+            <button type="button" className={styles.secondary} onClick={resetToDubai}>
+              Dubai default
+            </button>
+          </div>
+
+          {/* Selected location summary */}
           {guessing ? (
-            <p className={styles.hint}>
-              Detecting your location… You can still pick manually.
-            </p>
+            <p className={styles.hint}>Detecting your location… You can still pick manually.</p>
           ) : error ? (
             <p className={styles.error}>{error}</p>
-          ) : current ? (
-            <p className={styles.hint}>
-              Selected:{" "}
-              <b>
-                {current.lat.toFixed(5)}, {current.lng.toFixed(5)}
-              </b>
-              {address ? (
-                <>
-                  {" "}
-                  · <span className={styles.addr}>{address}</span>
-                </>
-              ) : null}
-            </p>
           ) : null}
 
-          {/* Main actions */}
+          {/* Main action */}
           <div className={styles.actions}>
             <button
               type="button"
-              className={styles.secondary}
-              onClick={useMyLocation}
-            >
-              Use my current location
-            </button>
-
-            <button
-              type="button"
               className={styles.primary}
-              style={{
-                background: colors.accent,
-                color: colors.white,
-                opacity: current ? 1 : 0.6,
-              }}
+              style={{ background: colors.accent, color: colors.white, opacity: current ? 1 : 0.6 }}
               disabled={!current || saving}
               onClick={onConfirm}
             >
@@ -526,42 +532,25 @@ export default function LocationOnboarding() {
             </button>
           </div>
 
-          <p className={styles.footNote}>
-            Tip: drag the marker. The map now follows as you drag.
-          </p>
+          <p className={styles.footNote}>Click the map to set a marker. Drag to adjust precisely.</p>
         </div>
-
         {/* RIGHT: Map */}
         <div className={styles.mapCol}>
           {/* Floating map toolbar */}
           <div className={styles.mapToolbar}>
             <button
               className={styles.toolBtn}
-              onClick={() =>
-                current &&
-                mapRef.current?.flyTo(
-                  [current.lat, current.lng],
-                  14,
-                  { animate: true }
-                )
-              }
-              title="Recenter on selected"
-            >
-              ⤿ Recenter
-            </button>
-            <button
-              className={styles.toolBtn}
               onClick={resetToDubai}
               title="Go to Dubai default"
             >
-              🏙️ Dubai
+              Dubai
             </button>
             <button
               className={styles.toolBtn}
               onClick={useMyLocation}
               title="Use my location"
             >
-              📍 Locate
+              Locate
             </button>
           </div>
 
@@ -570,14 +559,21 @@ export default function LocationOnboarding() {
             zoom={13}
             scrollWheelZoom
             style={{ width: "100%", height: 520, borderRadius: 20 }}
-            whenCreated={(map) => (mapRef.current = map)}
+            whenCreated={(map) => {
+              mapRef.current = map;
+              setMapLoading(true);
+            }}
           >
             {/* Keep map synced with "current" */}
             <RecenterOnChange position={current} zoom={14} />
 
             <TileLayer
-              attribution="&copy; OpenStreetMap contributors"
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              eventHandlers={{
+                loading: () => setMapLoading(true),
+                tileloadstart: () => setMapLoading(true),
+                load: () => setMapLoading(false),
+              }}
             />
 
             <ClickToSetMarker

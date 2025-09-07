@@ -105,7 +105,11 @@ export default function BankDetails() {
       })
     );
 
-    navigate("/home");
+    if ((profile as any)?.role === "provider") {
+      navigate("/auth/ProviderServices");
+    } else {
+      navigate("/home");
+    }
   };
 
   return (

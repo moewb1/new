@@ -50,7 +50,13 @@ html, body, #root { height: 100%; }
 
 .emblaSlide {
   flex: 0 0 100%;
+  min-width: 100%;
   padding: 10px;
+
+  /* center the content in the slide */
+  display: flex;
+  justify-content: center;   /* horizontal */
+  align-items: center;       /* vertical (optional) */
 }
 
 @media (min-width: 760px) {
@@ -60,6 +66,7 @@ html, body, #root { height: 100%; }
 .infoCard {
   height: 100%;
   text-align: left;
+  width: 400px;
   background: linear-gradient(180deg, rgba(255,255,255,0.95), #fff);
   border: 1px solid rgba(0,0,0,0.06);
   border-left: 8px solid rgb(169, 174, 155);

@@ -589,10 +589,9 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
       {/* Jobs */}
       <div className={styles.centerRow}>
         <div className={styles.jobsHeader}>
-          <h2 className={styles.h2}>Latest Jobs</h2>
-          <span className={styles.jobsCount}>
-            {filteredJobs.length} result{filteredJobs.length !== 1 ? "s" : ""}
-          </span>
+          <h2 className={styles.h2}>Latest Jobs <span className={styles.jobsCount}>
+            ({filteredJobs.length} result{filteredJobs.length !== 1 ? "s" : ""})
+          </span></h2>
         </div>
       </div>
 
@@ -668,22 +667,6 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
             </div>
 
             <div className={styles.drawerBody}>
-              {/* Hero */}
-              <div className={styles.drawerHero}>
-                <div className={styles.avatarXL}>{displayName?.[0]?.toUpperCase() || "U"}</div>
-                <div className={styles.heroText}>
-                  <div className={styles.heroName}>{displayName}</div>
-                  <div className={styles.heroRole}>{role || "—"}</div>
-                </div>
-              </div>
-
-              {/* Stats */}
-              <div className={styles.statGrid}>
-                <div className={styles.statCard}><div className={styles.statLabel}>Rating</div><div className={styles.statValue}>4.7</div></div>
-                <div className={styles.statCard}><div className={styles.statLabel}>Jobs</div><div className={styles.statValue}>32</div></div>
-                <div className={styles.statCard}><div className={styles.statLabel}>Response</div><div className={styles.statValue}>~15m</div></div>
-              </div>
-
               {/* Primary actions */}
               <div className={styles.actionRow}>
                 <button className={styles.drawerBtn} onClick={() => { setProfileDrawerOpen(false); navigate("/profile"); }}>

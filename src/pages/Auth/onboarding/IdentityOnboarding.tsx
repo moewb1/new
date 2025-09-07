@@ -234,12 +234,7 @@ export default function IdentityOnboarding() {
     };
 
     localStorage.setItem("kyc.identity", JSON.stringify(identity));
-
-    if ((profile as any)?.role === "provider") {
-      navigate("/auth/ProviderServices");
-    } else {
       navigate("/auth/BankDetails");
-    }
   };
 
   /* react-select inline styles */

@@ -3,11 +3,9 @@
   --accent-2: rgb(150,155,140);
   --ink: #0f172a;
 }
-
 /* Page layout — centered */
 .wrapper {
   width: 100%;
-  max-width: 1060px;
   margin-inline: auto;
   padding: 18px 16px 40px;
   display: grid;
@@ -17,7 +15,7 @@
 }
 
 /* Center helper */
-.centerRow { display: grid; justify-items: center; }
+.centerRow { display: grid; justify-items: left; }
 .centerRow > * { width: 100%; }
 
 /* HERO */
@@ -131,7 +129,8 @@
 
 /* Categories */
 .catBar { margin-top: 6px; border-bottom: 1px solid rgba(0,0,0,0.06); width: 100%; max-width: 980px; }
-.catScroller { display: flex; gap: 8px; overflow-x: auto; padding: 8px 2px; scroll-snap-type: x proximity; justify-content: center; }
+
+.catScroller { display: flex; gap: 8px; overflow-x: auto; padding: 8px 2px; scroll-snap-type: x proximity; justify-content: left; }
 .catScroller::-webkit-scrollbar { display: none; }
 .catChip {
   flex: 0 0 auto; padding: 8px 12px; border-radius: 999px; border: 2px solid rgba(0,0,0,0.08);
@@ -144,9 +143,9 @@
 .catIcon { width: 16px; height: 16px; fill: var(--ink); opacity: .9; }
 
 /* Jobs header */
-.jobsHeader { margin-top: 10px; display: inline-grid; justify-items: center; gap: 4px; text-align: center; }
+.jobsHeader { margin-top: 10px; display: inline-grid; justify-items: left; gap: 4px; text-align: left; }
 .h2 { margin: 0; font-size: clamp(18px, 2.4vw, 22px); font-weight: 900; }
-.jobsCount { font-weight: 800; opacity: .7; }
+.jobsCount { font-weight: 500; opacity: .7;font-size: 14px; }
 
 /* Jobs grid */
 .jobsGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
@@ -155,6 +154,7 @@
 /* Job card */
 .jobCard {
   display: grid; grid-template-rows: auto 1fr auto;
+  max-width: 300px;
   border-radius: 16px; background: #fff; border: 1px solid rgba(0,0,0,0.06);
   overflow: hidden; box-shadow: 0 8px 26px rgba(0,0,0,0.06);
   transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
@@ -308,7 +308,7 @@
 .drawerName { font-weight: 900; }
 .drawerRole { font-weight: 800; opacity: .7; text-transform: capitalize; }
 .drawerBody {
-  display: grid;
+
   overflow-y: auto;
   position: relative;
 }
@@ -406,7 +406,7 @@
 .statLabel{font-weight:800; opacity:.7; font-size:12px;}
 .statValue{font-weight:900; font-size:18px;}
 
-.actionRow{ display:flex; gap:8px; margin-top:12px; }
+.actionRow{ display:flex; gap:8px; margin-top:12px;max-height: 50px; }
 
 .listGroup{
   margin-top:8px; border:1px solid rgba(0,0,0,0.06); border-radius:12px; overflow:hidden;
