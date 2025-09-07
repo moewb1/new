@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import colors from "../styles/colors";
 import Loader from "../components/Loader/Loader";
+import "leaflet/dist/leaflet.css";
 
 export default function AppLayout() {
   return (

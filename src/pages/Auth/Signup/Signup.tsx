@@ -50,8 +50,11 @@ export default function Signup() {
     e.preventDefault();
     setSubmitted(true);
     if (!isFormValid) return;
-    // TODO: call your real signup API, then:
-    navigate(`/auth/otp?email=${encodeURIComponent(email)}`);
+    sessionStorage.setItem("onboardingFlow", "signup");
+
+    navigate(
+      `/auth/otp?email=${encodeURIComponent(email)}&flow=signup${role ? `&role=${role}` : ""}`
+    );
   };
 
   return (

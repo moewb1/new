@@ -1,6 +1,7 @@
 import { lazy } from "react";
 import { createBrowserRouter } from "react-router-dom";
 import AppLayout from "./AppLayout";
+import "leaflet/dist/leaflet.css";
 
 // Auth screens
 const AuthEntry = lazy(() => import("@/pages/Auth/Entry/AuthEntry"));
@@ -8,6 +9,11 @@ const Login     = lazy(() => import("@/pages/Auth/Login/Login"));
 const Signup    = lazy(() => import("@/pages/Auth/Signup/Signup"));
 const Otp    = lazy(() => import("@/pages/Auth/Otp/Otp"));
 const ForgetPassword     = lazy(() => import("@/pages/Auth/Login/ForgetPassword"));
+const Home    = lazy(() => import("@/pages/Home/Home.tsx"));
+const LocationOnboarding    = lazy(() => import("@/pages/Auth/onboarding/LocationOnboarding"));
+const IdentityOnboarding  = lazy(() => import("@/pages/Auth/onboarding/IdentityOnboarding"));
+const ProviderServices    = lazy(() => import("@/pages/Auth/onboarding/ProviderServices"));
+const BankDetails         = lazy(() => import("@/pages/Auth/onboarding/BankDetails"));
 
 export const router = createBrowserRouter([
   {
@@ -25,8 +31,15 @@ export const router = createBrowserRouter([
       { path: "auth/signup", element: <Signup /> },
       { path: "auth/forgot-password", element: <ForgetPassword /> },
       { path: "auth/otp", element: <Otp /> },
+
+      // Onboarding sequence
+      { path: "auth/LocationOnboarding", element: <LocationOnboarding /> },
+      { path: "auth/Identity", element: <IdentityOnboarding /> },
+      { path: "auth/ProviderServices", element: <ProviderServices /> },
+      { path: "auth/BankDetails", element: <BankDetails /> },
+
+      { path: "home", element: <Home  /> },
       { path: "*", element: <div>404 – Not Found</div> },
-      
     ],
   },
 ]);

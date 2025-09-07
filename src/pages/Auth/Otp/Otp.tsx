@@ -29,20 +29,34 @@ export default function Otp() {
     return `${m}:${s}`;
   }, [secondsLeft]);
 
+  const flowParam = (search.get("flow") || "").toLowerCase().trim();
+  const flow = flowParam || (sessionStorage.getItem("onboardingFlow") || "login").toLowerCase().trim();
+  const roleParam = search.get("role"); // "provider" | "consumer" | null
+  
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isComplete || submitting) return;
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 700)); // simulate API
-
+    await new Promise((r) => setTimeout(r, 700));
+    setSubmitting(false);
+  
+    // Save auth + role
     localStorage.setItem(
       "auth",
       JSON.stringify({ authenticated: true, verifiedAt: new Date().toISOString() })
     );
-
-    navigate("/");
+    if (roleParam) {
+      const profile = JSON.parse(localStorage.getItem("profile") || "{}");
+      profile.role = roleParam;
+      localStorage.setItem("profile", JSON.stringify(profile));
+    }
+  
+    if (flow === "signup") {
+      navigate("/auth/LocationOnboarding");
+    } else {
+      navigate("/home");
+    }
   };
-
   const handleResend = () => {
     if (secondsLeft > 0) return;
     // TODO: call resend API

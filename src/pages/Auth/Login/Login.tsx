@@ -36,7 +36,8 @@ export default function Login() {
     setSubmitting(false);
 
     // 2FA step -> go to OTP
-    navigate(`/auth/otp?email=${encodeURIComponent(email)}`);
+    sessionStorage.setItem("onboardingFlow", "login");
+    navigate(`/auth/otp?email=${encodeURIComponent(email)}&flow=login`);
   };
 
   return (

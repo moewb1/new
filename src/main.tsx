@@ -5,6 +5,7 @@ import { RouterProvider } from "react-router-dom";
 import { router } from "./routes/Index";
 import { Provider } from "react-redux";
 import { Provider as ChakraProvider } from "@/components/ui/provider";
+import 'leaflet/dist/leaflet.css';
 import { store } from "./store";
 
 createRoot(document.getElementById("root")!).render(

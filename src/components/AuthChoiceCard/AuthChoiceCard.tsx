@@ -4,19 +4,19 @@ import colors from "@/styles/colors";
 
 type Props = {
   title: "Provider" | "Consumer";
-  emoji: string;
+  imgSrc: string;            // using hand.png for both
   selected?: boolean;
   onClick: () => void;
 };
 
-export default function AuthChoiceCard({ title, emoji, selected, onClick }: Props) {
+export default function AuthChoiceCard({ title, imgSrc, selected, onClick }: Props) {
   return (
     <button
       type="button"
       role="radio"
       aria-checked={!!selected}
       onClick={onClick}
-      onKeyDown={(e) => { 
+      onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           onClick();
@@ -24,13 +24,15 @@ export default function AuthChoiceCard({ title, emoji, selected, onClick }: Prop
       }}
       className={styles.card}
       data-selected={selected ? "true" : "false"}
-      style={{
-        backgroundColor: selected ? colors.accent : colors.white,
-        color: colors.black,
-      }}
       aria-label={title}
+      style={{
+        backgroundColor: selected ? colors.accent : "#fff",
+        color: "#000",
+      }}
     >
-      <span className={styles.emoji} aria-hidden="true">{emoji}</span>
+      <div className={styles.mediaWrap} aria-hidden="true">
+        <img src={imgSrc} alt="" className={styles.img} />
+      </div>
       <span className={styles.title}>{title}</span>
     </button>
   );
