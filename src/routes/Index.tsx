@@ -15,6 +15,10 @@ const IdentityOnboarding  = lazy(() => import("@/pages/Auth/onboarding/IdentityO
 const ProviderServices    = lazy(() => import("@/pages/Auth/onboarding/ProviderServices"));
 const BankDetails         = lazy(() => import("@/pages/Auth/onboarding/BankDetails"));
 const Chat         = lazy(() => import("@/pages/Chat/Chat"));
+const EditProfile = lazy(() => import("@/pages/Profile/EditProfile"));
+const Account  = lazy(() => import("@/pages/Profile/Account"));
+const Balance = lazy(() => import("@/pages/Profile/Balance"));
+const Payouts = lazy(() => import("@/pages/Profile/Payouts"));
 
 export const router = createBrowserRouter([
   {
@@ -38,6 +42,10 @@ export const router = createBrowserRouter([
       { path: "auth/Identity", element: <IdentityOnboarding /> },
       { path: "auth/ProviderServices", element: <ProviderServices /> },
       { path: "auth/BankDetails", element: <BankDetails /> },
+      { path: "profile/EditProfile", element: <EditProfile /> },
+      { path: "profile/account", element: <Account /> },
+      { path: "profile/Balance", element: <Balance /> },
+      { path: "profile/Payouts", element: <Payouts /> },
 
       { path: "home", element: <Home  /> },
       { path: "chat", element: <Chat  /> },
