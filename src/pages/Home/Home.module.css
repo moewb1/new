@@ -1,7 +1,7 @@
 :root {
   --accent: rgb(169,174,155);
   --accent-2: rgb(150,155,140);
-  --ink: #0f172a;
+  --ink: #4a4d42;
 }
 /* Page layout — centered */
 .wrapper {
@@ -19,34 +19,49 @@
 .centerRow > * { width: 100%; }
 
 /* HERO */
+/* HERO */
 .hero {
   position: relative;
   border-radius: 18px;
   padding: 16px;
-  background: radial-gradient(1200px 1200px at -10% -20%, #eef1ed 0%, #f7f8f6 30%, #fafafa 60%, #fff 100%);
+  /* ✅ requested background color */
+  background: #a9ae9b95;
   border: 1px solid rgba(0,0,0,0.06);
   overflow: hidden;
   box-shadow: 0 2px 12px rgba(0,0,0,0.06);
 }
-.hero::before,
+
+/* top-left graphic */
+.hero::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0;
+  width: clamp(140px, 28vw, 320px);
+  height: clamp(140px, 28vw, 320px);
+  background-image: url("../../assets/Frameleft.png"); /* adjust path if needed */
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: top left;
+  pointer-events: none;
+  /* optional: soften overlay without losing detail */
+  opacity: 0.95;
+}
+
+/* bottom-right graphic */
 .hero::after {
   content: "";
   position: absolute;
-  border-radius: 50%;
+  right: 0; bottom: 0;
+  width: clamp(60px, 28vw, 160px);
+  height: clamp(60px, 28vw, 160px);
+  background-image: url("../../assets/Frameright.png"); /* adjust path if needed */
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: bottom right;
   pointer-events: none;
+  opacity: 0.95;
 }
-.hero::before {
-  width: 320px; height: 320px;
-  right: -120px; top: -120px;
-  background: radial-gradient(closest-side, rgba(0,0,0,0.08), transparent 70%);
-  filter: blur(2px);
-}
-.hero::after {
-  width: 220px; height: 220px;
-  left: -80px; bottom: -90px;
-  background: radial-gradient(closest-side, rgba(0,0,0,0.06), transparent 70%);
-  filter: blur(1px);
-}
+
 
 .heroTop {
   position: relative;
@@ -60,8 +75,8 @@
 /* Greeting */
 .helloBlock { display: grid; gap: 10px; }
 .greetingLine { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.greeting { font-weight: 800; font-size: clamp(18px, 2.6vw, 22px); color: var(--ink); }
-.name { font-weight: 900; font-size: clamp(18px, 2.8vw, 24px); }
+.greeting { font-weight: 800; font-size: clamp(18px, 2.6vw, 22px); color:#ffff; }
+.name { font-weight: 900; font-size: clamp(18px, 2.8vw, 24px);color:#ffff; }
 .roleBadge {
   margin-left: 6px; font-size: 12px; padding: 4px 8px; border-radius: 999px;
   background: #f1f5f9; border: 1px solid rgba(0,0,0,0.06); color: var(--ink);
@@ -308,7 +323,7 @@
 .drawerName { font-weight: 900; }
 .drawerRole { font-weight: 800; opacity: .7; text-transform: capitalize; }
 .drawerBody {
-
+  padding-inline: 10px;
   overflow-y: auto;
   position: relative;
 }
@@ -406,7 +421,7 @@
 .statLabel{font-weight:800; opacity:.7; font-size:12px;}
 .statValue{font-weight:900; font-size:18px;}
 
-.actionRow{ display:flex; gap:8px; margin-top:12px;max-height: 50px; }
+.actionRow{ display:flex; gap:8px; margin-top:12px;max-height: 50px;  padding-left: 10px;}
 
 .listGroup{
   margin-top:8px; border:1px solid rgba(0,0,0,0.06); border-radius:12px; overflow:hidden;

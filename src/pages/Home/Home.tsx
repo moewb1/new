@@ -73,6 +73,35 @@ const Icon = {
       <path d="M12 2a6 6 0 0 0-6 6v3.586l-1.707 1.707A1 1 0 0 0 5 15h14a1 1 0 0 0 .707-1.707L18 11.586V8a6 6 0 0 0-6-6zm0 20a3 3 0 0 0 2.995-2.824L15 19h-6a3 3 0 0 0 2.824 2.995L12 22z"/>
     </svg>
   ),
+
+  Edit: (props: any) => (
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
+      <path d="M3 17.25V21h3.75L18.81 8.94l-3.75-3.75L3 17.25z"/>
+      <path d="M20.71 7.04a1 1 0 0 0 0-1.41L18.37 3.29a1 1 0 0 0-1.41 0l-1.34 1.34 3.75 3.75 1.34-1.34z"/>
+    </svg>
+  ),
+  Wallet: (props: any) => (
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
+      <rect x="2" y="6" width="20" height="12" rx="3"/>
+      <path d="M14 10h8v4h-8a2 2 0 0 1-2-2c0-1.1.9-2 2-2z"/>
+      <circle cx="18" cy="12" r="1.5"/>
+    </svg>
+  ),
+  ArrowDownCircle: (props: any) => (
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M12 8v8"/>
+      <path d="M8 12l4 4 4-4"/>
+    </svg>
+  ),
+  FileShield: (props: any) => (
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
+      <path d="M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/>
+      <path d="M15 2v5h5"/>
+      <path d="M12 10l3 1v2c0 2-1.5 3.5-3 4-1.5-.5-3-2-3-4v-2l3-1z"/>
+    </svg>
+  ),
+
   Location: (props: any) => (
     <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
       <path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
@@ -126,6 +155,15 @@ const Icon = {
   Shield: (props: any) => (
     <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
       <path d="M12 2l8 3v6c0 5.25-3.438 9.977-8 11-4.562-1.023-8-5.75-8-11V5l8-3z"/>
+    </svg>
+  ),
+  Application: (props: any) => (
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
+      {/* file with a folded corner */}
+      <path d="M6 3h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
+      <path d="M15 3v5h5"/>
+      {/* form lines */}
+      <path d="M8 9h6M8 13h8M8 17h6"/>
     </svg>
   ),
   Calendar: (props: any) => (
@@ -545,17 +583,17 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
         {/* Quick groups */}
         <div className={styles.centerRow}>
           <div className={styles.quickRow} role="navigation" aria-label="Quick actions">
-            <button className={styles.quickCard} onClick={() => goQuick("/auth/BookingApplications")}>
+            <button className={styles.quickCard} onClick={() => goQuick("/booking")}>
               <Icon.Doc className={styles.quickIcon} />
-              <span className={styles.quickText}>Booking Applications</span>
+              <span className={styles.quickText}>Booking</span>
             </button>
             <button className={styles.quickCard} onClick={() => goQuick("/chat")}>
               <Icon.Chat className={styles.quickIcon} />
               <span className={styles.quickText}>Chat</span>
             </button>
-            <button className={styles.quickCard} onClick={() => setProfileDrawerOpen(true)}>
-              <Icon.User className={styles.quickIcon} />
-              <span className={styles.quickText}>Profile</span>
+            <button className={styles.quickCard} onClick={() => goQuick("/applications")}>
+             <Icon.Application className={styles.quickIcon} />
+              <span className={styles.quickText}>Application</span>
             </button>
           </div>
         </div>
@@ -622,10 +660,6 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
               <div className={styles.jobBody}>
                 <h3 className={styles.jobTitle}>{job.title}</h3>
                 <p className={styles.jobMeta}>by <b>{job.consumerName}</b></p>
-                <div className={styles.ratingRow} aria-label={`Rating ${rating} out of 5`}>
-                  <Icon.Star className={styles.star} />
-                  <span className={styles.ratingText}>{rating.toFixed(1)}</span>
-                </div>
               </div>
 
               <div className={styles.jobActions}>
@@ -667,50 +701,69 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
             </div>
 
             <div className={styles.drawerBody}>
-              {/* Primary actions */}
-              <div className={styles.actionRow}>
-                <button className={styles.drawerBtn} onClick={() => { setProfileDrawerOpen(false); navigate("/profile"); }}>
-                  Open Profile
-                </button>
-                <button className={styles.drawerBtnSecondary} onClick={() => { setProfileDrawerOpen(false); navigate("/profile/location"); }}>
-                  Edit Location
-                </button>
-              </div>
 
               {/* Navigation list */}
               <div className={styles.listGroup}>
-                <button className={styles.listItem} onClick={() => { setProfileDrawerOpen(false); navigate("/auth/BankDetails"); }}>
-                  <span className={styles.listIcon}><Icon.CreditCard /></span>
-                  <span className={styles.listText}>Bank Details</span>
+                {/* Edit Profile */}
+                <button
+                  className={styles.listItem}
+                  onClick={() => { setProfileDrawerOpen(false); navigate("/profile/EditProfile"); }}
+                >
+                  <span className={styles.listIcon}><Icon.Edit /></span>
+                  <span className={styles.listText}>Edit Profile</span>
                   <Icon.ChevronRight className={styles.chev} />
                 </button>
 
+                {/* Account (bank & account details) */}
+                <button
+                  className={styles.listItem}
+                  onClick={() => { setProfileDrawerOpen(false); navigate("/profile/account"); }}
+                >
+                  <span className={styles.listIcon}><Icon.CreditCard /></span>
+                  <span className={styles.listText}>Account</span>
+                  <Icon.ChevronRight className={styles.chev} />
+                </button>
+
+                {/* Balance (provider-only) */}
                 {role === "provider" && (
-                  <button className={styles.listItem} onClick={() => { setProfileDrawerOpen(false); navigate("/auth/ProviderServices"); }}>
-                    <span className={styles.listIcon}><Icon.Bag /></span>
-                    <span className={styles.listText}>My Services</span>
+                  <button
+                    className={styles.listItem}
+                    onClick={() => { setProfileDrawerOpen(false); navigate("/profile/Balance"); }}
+                  >
+                    <span className={styles.listIcon}><Icon.Wallet /></span>
+                    <span className={styles.listText}>Balance</span>
                     <Icon.ChevronRight className={styles.chev} />
                   </button>
                 )}
 
-                <button className={styles.listItem} onClick={() => { setProfileDrawerOpen(false); navigate("/auth/IdentityOnboarding"); }}>
-                  <span className={styles.listIcon}><Icon.ShieldCheck /></span>
-                  <span className={styles.listText}>Identity & Documents</span>
+                {/* Payouts */}
+                <button
+                  className={styles.listItem}
+                  onClick={() => { setProfileDrawerOpen(false); navigate("/profile/Payouts"); }}
+                >
+                  <span className={styles.listIcon}><Icon.ArrowDownCircle /></span>
+                  <span className={styles.listText}>Payouts</span>
                   <Icon.ChevronRight className={styles.chev} />
                 </button>
 
-                <button className={styles.listItem} onClick={() => { setProfileDrawerOpen(false); navigate("/settings"); }}>
-                  <span className={styles.listIcon}><Icon.User /></span>
-                  <span className={styles.listText}>Account Settings</span>
+                {/* Privacy Policy */}
+                <button
+                  className={styles.listItem}
+                  onClick={() => { setProfileDrawerOpen(false); navigate("/profile/IdentityAndServices"); }}
+                >
+                  <span className={styles.listIcon}><Icon.FileShield /></span>
+                  <span className={styles.listText}>Privacy Policy</span>
                   <Icon.ChevronRight className={styles.chev} />
                 </button>
 
+                {/* Log out */}
                 <button className={`${styles.listItem} ${styles.listDanger}`} onClick={logout}>
                   <span className={styles.listIcon}><Icon.Logout /></span>
                   <span className={styles.listText}>Log out</span>
                   <Icon.ChevronRight className={styles.chev} />
                 </button>
               </div>
+
             </div>
           </aside>
         </>
@@ -824,14 +877,6 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
                           </button>
                         </div>
                       </div>
-
-                      <button
-                        className={styles.notifCTA}
-                        onClick={() => { setNotifDrawerOpen(false); /* navigate if needed */ }}
-                        aria-label="Open notification"
-                      >
-                        Open
-                      </button>
                     </li>,
                   ];
                 });
