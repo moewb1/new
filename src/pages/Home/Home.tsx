@@ -593,7 +593,7 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
             </button>
             <button className={styles.quickCard} onClick={() => goQuick("/applications")}>
              <Icon.Application className={styles.quickIcon} />
-              <span className={styles.quickText}>Application</span>
+              <span className={styles.quickText}>Applications</span>
             </button>
           </div>
         </div>

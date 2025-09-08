@@ -10,6 +10,8 @@ const Signup    = lazy(() => import("@/pages/Auth/Signup/Signup"));
 const Otp    = lazy(() => import("@/pages/Auth/Otp/Otp"));
 const ForgetPassword     = lazy(() => import("@/pages/Auth/Login/ForgetPassword"));
 const Home    = lazy(() => import("@/pages/Home/Home.tsx"));
+const Booking   = lazy(() => import("@/pages/Home/Bookings"));
+const Applications    = lazy(() => import("@/pages/Home/Applications"));
 const LocationOnboarding    = lazy(() => import("@/pages/Auth/onboarding/LocationOnboarding"));
 const IdentityOnboarding  = lazy(() => import("@/pages/Auth/onboarding/IdentityOnboarding"));
 const ProviderServices    = lazy(() => import("@/pages/Auth/onboarding/ProviderServices"));
@@ -48,6 +50,8 @@ export const router = createBrowserRouter([
       { path: "profile/Payouts", element: <Payouts /> },
 
       { path: "home", element: <Home  /> },
+      { path: "booking", element: <Booking  /> },
+      { path: "applications", element: <Applications  /> },
       { path: "chat", element: <Chat  /> },
       { path: "*", element: <div>404 – Not Found</div> },
     ],
