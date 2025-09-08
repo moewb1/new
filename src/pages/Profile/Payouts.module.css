@@ -1,0 +1,65 @@
+:root{ --accent:#A9AE9B; --ink:#0f172a; }
+
+.wrapper{
+  width:min(980px,100%); margin:0 auto;
+  padding:28px 18px calc(40px + env(safe-area-inset-bottom));
+  display:grid; gap:16px; color:#000;
+}
+.header{
+  display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center;
+}
+.backBtn{
+  width:38px; height:38px; border-radius:10px; border:1px solid rgba(0,0,0,.08);
+  background:#fff; cursor:pointer; font-weight:900;
+}
+.h1{ margin:0; font-size:26px; font-weight:900; letter-spacing:-.02em; }
+.sub{ margin:4px 0 0; opacity:.85; font-weight:600; }
+.headerActions{ display:flex; gap:10px; }
+.linkBtn{
+  background:#fff; border:1px solid rgba(0,0,0,.1); border-radius:10px; padding:10px 12px;
+  font-weight:900; cursor:pointer;
+}
+
+.statCard{
+  border-radius:18px;
+  background:
+    radial-gradient(600px 260px at -10% -10%, rgba(169,174,155,.18), transparent 60%),
+    linear-gradient(180deg, #f7f8f6, #fff);
+  border:1px solid rgba(0,0,0,.06);
+  box-shadow:0 12px 34px rgba(0,0,0,.08);
+  padding:18px 20px;
+  display:grid; gap:6px;
+}
+.statLabel{ font-weight:800; opacity:.75; font-size:13px; }
+.statValue{ font-weight:900; font-size:34px; letter-spacing:-.01em; color:var(--ink); }
+.statSub{ font-weight:800; opacity:.7; }
+
+.listHeader{ display:flex; align-items:center; gap:8px; }
+.h2{ margin:0; font-size:18px; font-weight:900; }
+.count{ font-weight:800; opacity:.7; }
+
+.list{ list-style:none; margin:0; padding:0; display:grid; gap:10px; }
+.item{
+  display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center;
+  padding:12px; border-radius:14px; background:#fff;
+  border:1px solid rgba(0,0,0,.06);
+  box-shadow:0 8px 26px rgba(0,0,0,.06);
+}
+.avatar{
+  width:44px; height:44px; border-radius:999px; overflow:hidden;
+  background:#f1f5f9; border:2px solid #fff; box-shadow:0 2px 8px rgba(0,0,0,.08);
+}
+.avatar img{ width:100%; height:100%; object-fit:cover; display:block; }
+.itemMain{ min-width:0; }
+.itemTitle{ font-weight:900; }
+.itemSub{ font-weight:800; opacity:.6; font-size:12px; }
+.itemAmount{ font-weight:900; white-space:nowrap; }
+.empty{
+  text-align:center; padding:18px; border:1px dashed rgba(0,0,0,.12);
+  border-radius:12px; font-weight:800; background:#fff;
+}
+
+/* Responsive */
+@media (max-width:560px){
+  .statValue{ font-size:28px; }
+}
