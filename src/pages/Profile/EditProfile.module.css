@@ -3,12 +3,19 @@
   --ink:#0f172a;
 }
 
+/* Page container: 70% by default, 95% under 700px */
 .wrapper{
-  width:min(980px,100%);
-  margin:0 auto;
-  padding:28px 18px calc(40px + env(safe-area-inset-bottom));
-  display:grid; gap:16px; color:#000;
+  width: 70%;
+  max-width: 980px;                 /* keeps things from getting too wide */
+  margin: 0 auto;
+  min-height: 100svh;               /* “open it fully” vertically */
+  padding: 28px 18px calc(40px + env(safe-area-inset-bottom));
+  display: grid;
+  gap: 16px;
+  color: #000;
+  box-sizing: border-box;           /* avoid overflow from padding */
 }
+
 .header{
   display:flex; align-items:center; gap:12px;
 }
@@ -24,7 +31,7 @@
 }
 .card{
   display:grid; gap:14px; padding:22px; border-radius:16px;
-  background: #f9f9f9; border:1px solid rgba(0,0,0,.06);
+  background:#f9f9f9; border:1px solid rgba(0,0,0,.06);
   box-shadow:0 2px 12px rgba(0,0,0,.06);
 }
 .row{ display:grid; gap:8px; }
@@ -48,12 +55,8 @@
 .primary:hover,.secondary:hover{ transform: translateY(-1px); box-shadow:0 10px 24px rgba(0,0,0,.14); }
 
 /* Preview */
-.preview{
-  display:grid; gap:10px; align-content:start;
-}
-.previewHeader{
-  font-weight:900; font-size:14px; opacity:.8;
-}
+.preview{ display:grid; gap:10px; align-content:start; }
+.previewHeader{ font-weight:900; font-size:14px; opacity:.8; }
 .profileCard{
   display:grid; grid-template-columns:auto 1fr; gap:12px; align-items:center;
   padding:18px; border-radius:16px; background: radial-gradient(360px 260px at 10% 10%, rgba(169,174,155,.12), transparent 70%);
@@ -67,7 +70,13 @@
 .profileName{ font-weight:900; }
 .profileRow{ font-weight:700; opacity:.8; }
 
-/* Responsive */
+/* Layout stacks earlier for narrow screens */
 @media (max-width: 860px){
   .grid{ grid-template-columns: 1fr; }
+}
+
+/* Width rule you asked for: 95% under 700px */
+@media (max-width: 700px){
+  .wrapper{ width: 95%; padding-inline: 12px; }
+  .card{ padding:18px; }
 }

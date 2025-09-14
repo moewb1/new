@@ -254,7 +254,7 @@ export default function Chat() {
         {/* Rail / Drawer */}
         <aside className={`neo-rail ${drawerOpen ? "open" : ""}`}>
           <header className="rail-head">
-            <button className="icon ghost" onClick={() => navigate("/home")} aria-label="Back">
+            <button className="icon ghost"onClick={() => navigate(-1)} aria-label="Back">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
                 <path d="M12 3l9 8h-3v9h-5v-6H11v6H6v-9H3l9-8z" />
               </svg>

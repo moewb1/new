@@ -1,12 +1,23 @@
 :root{ --accent:#A9AE9B; --ink:#0f172a; }
 
 .wrapper{
-  width:min(980px,100%); margin:0 auto;
-  padding:28px 18px calc(40px + env(safe-area-inset-bottom));
-  display:grid; gap:16px; color:#000;
+  width: 70%;
+  max-width: 980px;                 /* cap width */
+  margin: 0 auto;
+  min-height: 100svh;               /* fill viewport vertically */
+  padding: 28px 18px calc(40px + env(safe-area-inset-bottom));
+  display: grid;
+  gap: 16px;
+  color: #000;
+  box-sizing: border-box;           /* avoid overflow from padding */
 }
+
+/* Header */
 .header{
-  display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
 }
 .backBtn{
   width:38px; height:38px; border-radius:10px; border:1px solid rgba(0,0,0,.08);
@@ -20,6 +31,7 @@
   font-weight:900; cursor:pointer;
 }
 
+/* Stats */
 .statCard{
   border-radius:18px;
   background:
@@ -34,6 +46,7 @@
 .statValue{ font-weight:900; font-size:34px; letter-spacing:-.01em; color:var(--ink); }
 .statSub{ font-weight:800; opacity:.7; }
 
+/* List */
 .listHeader{ display:flex; align-items:center; gap:8px; }
 .h2{ margin:0; font-size:18px; font-weight:900; }
 .count{ font-weight:800; opacity:.7; }
@@ -59,7 +72,22 @@
   border-radius:12px; font-weight:800; background:#fff;
 }
 
-/* Responsive */
+/* === Responsiveness === */
+
+/* Your 95% width rule under 700px */
+@media (max-width: 700px){
+  .wrapper{ width:95%; padding-inline:12px; }
+
+  /* Tighter header on phones */
+  .header{ grid-template-columns: auto 1fr; }
+  .headerActions{ justify-self: end; }
+
+  /* Make list items simpler in one column on phones */
+  .item{ grid-template-columns: auto 1fr; }
+  .itemAmount{ justify-self: end; }
+}
+
+/* Keep your existing small tweak */
 @media (max-width:560px){
   .statValue{ font-size:28px; }
 }

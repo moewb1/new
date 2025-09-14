@@ -107,7 +107,7 @@ export default function ProviderServices() {
             disabled={!selected.length}
             type="submit"
           >
-            Continue
+            Finish
           </button>
         </div>
       </form>

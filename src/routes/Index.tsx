@@ -21,6 +21,9 @@ const EditProfile = lazy(() => import("@/pages/Profile/EditProfile"));
 const Account  = lazy(() => import("@/pages/Profile/Account"));
 const Balance = lazy(() => import("@/pages/Profile/Balance"));
 const Payouts = lazy(() => import("@/pages/Profile/Payouts"));
+const BookingDetails = lazy(() => import("@/pages/Home/BookingDetails"));
+const JobDetails = lazy(() => import("@/pages/Home/JobDetails"));
+
 
 export const router = createBrowserRouter([
   {
@@ -38,6 +41,7 @@ export const router = createBrowserRouter([
       { path: "auth/signup", element: <Signup /> },
       { path: "auth/forgot-password", element: <ForgetPassword /> },
       { path: "auth/otp", element: <Otp /> },
+      { path: "jobs/:id", element: <JobDetails /> },
 
       // Onboarding sequence
       { path: "auth/LocationOnboarding", element: <LocationOnboarding /> },
@@ -51,6 +55,7 @@ export const router = createBrowserRouter([
 
       { path: "home", element: <Home  /> },
       { path: "booking", element: <Booking  /> },
+      { path: "booking/:id", element: <BookingDetails /> },
       { path: "applications", element: <Applications  /> },
       { path: "chat", element: <Chat  /> },
       { path: "*", element: <div>404 – Not Found</div> },

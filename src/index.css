@@ -6,7 +6,3 @@
   text-align: initial;
 }
 
-/* Helps full-viewport centering work reliably */
-html, body, #root {
-  height: 100%;
-}

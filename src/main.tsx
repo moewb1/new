@@ -7,8 +7,12 @@ import { Provider } from "react-redux";
 import { Provider as ChakraProvider } from "@/components/ui/provider";
 import 'leaflet/dist/leaflet.css';
 import { store } from "./store";
+import colors from "./styles/colors";
+const rootElement = document.getElementById("root")!;
 
-createRoot(document.getElementById("root")!).render(
+rootElement.style.backgroundColor = colors.appBg;
+
+createRoot(rootElement).render(
   <StrictMode>
     <Provider store={store}>
       <ChakraProvider>

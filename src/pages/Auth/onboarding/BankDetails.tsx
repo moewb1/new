@@ -116,20 +116,13 @@ export default function BankDetails() {
     <section className={styles.wrapper}>
       <header className={styles.header}>
         <h1 className={styles.h1}>Bank Details</h1>
-        <p className={styles.sub}>
-          {(profile as any)?.role ? (
-            <>Finishing setup for <b>{(profile as any).role}</b>.</>
-          ) : (
-            "Finishing setup."
-          )}
-        </p>
       </header>
 
       <form className={styles.box} onSubmit={onSubmit} noValidate>
         {/* Bank Name */}
         <div className={styles.row}>
           <label className={styles.label}>
-            <span className={styles.emoji}>🏦</span> Bank Name
+            Bank Name
           </label>
           <input
             className={`${styles.input} ${submitted && !bankOk ? styles.inputError : ""}`}
@@ -149,7 +142,7 @@ export default function BankDetails() {
         <div className={styles.row}>
           <div className={styles.labelRow}>
             <label className={styles.label}>
-              <span className={styles.emoji}>🧾</span> IBAN
+              IBAN
             </label>
             <span className={styles.badge}>
               {detectedCountry ? `Detected: ${detectedCountry}` : "—"}
@@ -200,7 +193,7 @@ export default function BankDetails() {
         {/* Account Holder */}
         <div className={styles.row}>
           <label className={styles.label}>
-            <span className={styles.emoji}>👤</span> Account Holder Name
+            Account Holder Name
           </label>
           <input
             className={`${styles.input} ${submitted && !holderOk ? styles.inputError : ""}`}
@@ -230,7 +223,7 @@ export default function BankDetails() {
             disabled={!allOk}
             type="submit"
           >
-            Finish
+            continue
           </button>
         </div>
       </form>

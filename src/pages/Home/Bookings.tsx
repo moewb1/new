@@ -1,20 +1,55 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./Bookings.module.css";
 
-type Status = "pending" | "completed" | "requests" | "cancelled";
+/* ---------- Types ---------- */
+type BackendStatus =
+  | "requested"
+  | "paid"
+  | "awaiting_payment"
+  | "completed"
+  | "cancelled"
+  | "refunded";
+
+type TabKey = "pending" | "completed" | "requests" | "cancelled";
 
 type Booking = {
   id: string;
   title: string;
-  service: string;
+  services: string;
   fromISO: string;
   toISO: string;
   amountAED: number;
-  status: Status;
+  status: BackendStatus;
 };
 
-/* ---------- helpers ---------- */
+/* ---------- Constants (mirror your mobile constants) ---------- */
+const STATUS_LABELS: Record<BackendStatus, string> = {
+  requested: "Requested",
+  paid: "Paid",
+  awaiting_payment: "Awaiting payment",
+  completed: "Completed",
+  cancelled: "Cancelled",
+  refunded: "Refunded",
+};
+
+const STATUS_TO_TAB: Record<BackendStatus, TabKey> = {
+  requested: "requests",
+  paid: "pending",
+  awaiting_payment: "pending",
+  completed: "completed",
+  cancelled: "cancelled",
+  refunded: "cancelled",
+};
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: "pending", label: "Pending" },
+  { key: "completed", label: "Completed" },
+  { key: "requests", label: "Requests" },
+  { key: "cancelled", label: "Cancelled" },
+];
+
+/* ---------- Helpers ---------- */
 const fmtAED = (v: number) =>
   `AED ${v.toLocaleString("en-AE", { maximumFractionDigits: 0 })}`;
 
@@ -30,68 +65,137 @@ const fmtRange = (fromISO: string, toISO: string) => {
   const dB = b.toLocaleDateString(undefined, { month: "short", day: "numeric" });
   const tA = a.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
   const tB = b.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-
   return sameDay(a, b) ? `${dA} • ${tA} – ${tB}` : `${dA} ${tA} → ${dB} ${tB}`;
 };
 
-function daysFromNow(days: number, startHour = 10, durationHrs = 4) {
-  const from = new Date();
-  from.setDate(from.getDate() + days);
-  from.setHours(startHour, 0, 0, 0);
-  const to = new Date(from.getTime() + durationHrs * 3600_000);
-  return { fromISO: from.toISOString(), toISO: to.toISOString() };
+/* ---------- Seed to mirror your mobile STATIC_BOOKINGS ---------- */
+function seedMobileLikeBookings(): Booking[] {
+  const mk = (y: number, m: number, d: number, hh: number, mm = 0) =>
+    new Date(Date.UTC(y, m - 1, d, hh, mm, 0)).toISOString();
+
+  return [
+    {
+      id: "b1",
+      title: "House Cleaning - 2BR",
+      services: "Cleaner",
+      fromISO: mk(2025, 9, 12, 7), // 10:00 AM local approx
+      toISO: mk(2025, 9, 12, 10),  // 1:00 PM
+      amountAED: 25000,
+      status: "awaiting_payment",
+    },
+    {
+      id: "b2",
+      title: "Event Barista",
+      services: "Barista",
+      fromISO: mk(2025, 9, 14, 12), // 3:00 PM
+      toISO: mk(2025, 9, 14, 18),   // 9:00 PM
+      amountAED: 40000,
+      status: "completed",
+    },
+    {
+      id: "b3",
+      title: "Electrical Fix",
+      services: "Sockets replacement",
+      fromISO: mk(2025, 8, 29, 8),  // 11:00 AM
+      toISO: mk(2025, 8, 29, 10),   // 1:00 PM
+      amountAED: 15000,
+      status: "cancelled",
+    },
+    {
+      id: "b4",
+      title: "Deep Cleaning",
+      services: "Cleaner x2, Floor polish",
+      fromISO: mk(2025, 9, 2, 6),   // 9:00 AM
+      toISO: mk(2025, 9, 2, 9, 30), // 12:30 PM
+      amountAED: 35000,
+      status: "refunded",
+    },
+    {
+      id: "b5",
+      title: "Booth Execution",
+      services: "Setup",
+      fromISO: mk(2025, 9, 20, 4),  // 7:00 AM
+      toISO: mk(2025, 9, 20, 11),   // 2:00 PM
+      amountAED: 70000,
+      status: "paid",
+    },
+    {
+      id: "b6",
+      title: "Home Cleaning",
+      services: "Cleaner",
+      fromISO: mk(2025, 9, 9, 5),   // 8:00 AM
+      toISO: mk(2025, 9, 9, 8),     // 11:00 AM
+      amountAED: 22000,
+      status: "requested",
+    },
+  ];
 }
 
-/* ---------- storage with seed ---------- */
 function loadBookings(): Booking[] {
   try {
-    const raw = localStorage.getItem("bookings.items");
+    const raw = localStorage.getItem("bookings.items.v2");
     if (raw) return JSON.parse(raw) as Booking[];
   } catch {}
-  const s1 = daysFromNow(1, 9, 3);
-  const s2 = daysFromNow(-2, 12, 6);
-  const s3 = daysFromNow(3, 18, 5);
-  const s4 = daysFromNow(-6, 8, 4);
-  const seed: Booking[] = [
-    { id: "b1", title: "Apartment Deep Cleaning", service: "Cleaning", ...s1, amountAED: 260, status: "pending" },
-    { id: "b2", title: "Private Driver – Morning", service: "Driver", ...s2, amountAED: 420, status: "completed" },
-    { id: "b3", title: "Event Hostess – Gala", service: "Hostess", ...s3, amountAED: 520, status: "requests" },
-    { id: "b4", title: "Night Security", service: "Security", ...s4, amountAED: 380, status: "cancelled" },
-  ];
-  localStorage.setItem("bookings.items", JSON.stringify(seed));
+  const seed = seedMobileLikeBookings();
+  localStorage.setItem("bookings.items.v2", JSON.stringify(seed));
   return seed;
 }
 
-const TABS: { key: Status; label: string }[] = [
-  { key: "pending", label: "Pending" },
-  { key: "completed", label: "Completed" },
-  { key: "requests", label: "Requests" },
-  { key: "cancelled", label: "Cancelled" },
-];
-
+/* ---------- Component ---------- */
 export default function Bookings() {
   const navigate = useNavigate();
   const bookings = useMemo(loadBookings, []);
-  const [tab, setTab] = useState<Status>("pending");
+  const [tab, setTab] = useState<TabKey>("pending");
+
+  // Pagination + page-size tester
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState<number>(4);
+
+  useEffect(() => { setPage(0); }, [tab, pageSize]);
 
   const counts = useMemo(() => {
-    const c: Record<Status, number> = { pending: 0, completed: 0, requests: 0, cancelled: 0 };
-    bookings.forEach((b) => (c[b.status] += 1));
+    const c: Record<TabKey, number> = { pending: 0, completed: 0, requests: 0, cancelled: 0 };
+    bookings.forEach((b) => { c[STATUS_TO_TAB[b.status]] += 1; });
     return c;
   }, [bookings]);
 
-  const list = useMemo(() => bookings.filter((b) => b.status === tab), [bookings, tab]);
+  const list = useMemo(() => bookings.filter((b) => STATUS_TO_TAB[b.status] === tab), [bookings, tab]);
+
+  const total = list.length;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const clamp = (n: number) => Math.min(Math.max(n, 0), pageCount - 1);
+  const setPageSafe = (n: number) => setPage(clamp(n));
+
+  const paged = useMemo(() => list.slice(page * pageSize, page * pageSize + pageSize), [list, page, pageSize]);
+
+  const rangeStart = total ? page * pageSize + 1 : 0;
+  const rangeEnd = Math.min((page + 1) * pageSize, total);
+
+  const pageButtons = useMemo(() => {
+    const btns: (number | "…")[] = [];
+    if (pageCount <= 7) { for (let i = 0; i < pageCount; i++) btns.push(i); return btns; }
+    const add = (n: number) => { if (!btns.includes(n)) btns.push(n); };
+    add(0);
+    if (page > 2) btns.push("…");
+    for (let i = page - 1; i <= page + 1; i++) if (i > 0 && i < pageCount - 1) add(i);
+    if (page < pageCount - 3) btns.push("…");
+    add(pageCount - 1);
+    return btns;
+  }, [page, pageCount]);
 
   return (
-    <section className={styles.wrapper}>
-      <header className={styles.header}>
-        <button className={styles.backBtn} onClick={() => navigate(-1)} aria-label="Back">←</button>
-        <div>
-          <h1 className={styles.h1}>Bookings</h1>
-          <p className={styles.sub}>All your jobs, neatly grouped by status.</p>
+    <section className={styles.page}>
+      {/* Header */}
+      <div className={styles.header}>
+        <div className={styles.headerL}>
+          <button className={styles.iconBtn} onClick={() => navigate(-1)} aria-label="Back">←</button>
+          <div>
+            <h1 className={styles.h1}>Bookings</h1>
+          </div>
         </div>
-      </header>
+      </div>
 
+      {/* Tabs (neutral) */}
       <div className={styles.tabs} role="tablist" aria-label="Booking status">
         {TABS.map(t => (
           <button
@@ -101,44 +205,85 @@ export default function Bookings() {
             className={`${styles.tab} ${tab === t.key ? styles.tabActive : ""}`}
             onClick={() => setTab(t.key)}
           >
-            {t.label} <span className={styles.count}>{counts[t.key]}</span>
+            <span className={styles.tabLabel}>{t.label}</span>
+            <span className={styles.dot} />
+            <span className={styles.count}>{counts[t.key]}</span>
           </button>
         ))}
       </div>
 
-      <ul className={styles.cardList} role="list">
-        {list.map(b => (
-          <li key={b.id} className={styles.card}>
-            <div className={styles.rowTop}>
-              <div className={styles.title}>{b.title}</div>
-              <span className={`${styles.badge} ${styles[b.status]}`}>
-                {b.status === "requests" ? "Request" : b.status.charAt(0).toUpperCase() + b.status.slice(1)}
+      {/* Grid */}
+      <ul className={styles.cardGrid} role="list">
+        {paged.map(b => (
+          <li key={b.id} className={styles.card} onClick={() => navigate(`/booking/${b.id}`)}>
+            <div className={styles.cardTop}>
+              <h3 className={styles.title}>{b.title}</h3>
+              <span className={styles.badge}>
+                <span className={`${styles.badgeDot} ${styles[`dot_${b.status}`]}`} />
+                {STATUS_LABELS[b.status]}
               </span>
             </div>
 
-            <div className={styles.row}>
-              <span className={styles.label}>Service</span>
-              <span className={styles.value}>{b.service}</span>
+            <div className={styles.meta}>
+              <div className={styles.metaRow}>
+                <span className={styles.k}>Service</span>
+                <span className={styles.v}>{b.services}</span>
+              </div>
+              <div className={styles.metaRow}>
+                <span className={styles.k}>Date & time</span>
+                <span className={styles.v}>{fmtRange(b.fromISO, b.toISO)}</span>
+              </div>
             </div>
 
-            <div className={styles.row}>
-              <span className={styles.label}>Date & time</span>
-              <span className={styles.value}>{fmtRange(b.fromISO, b.toISO)}</span>
-            </div>
-
-            <div className={styles.divider} />
-
-            <div className={styles.rowTotal}>
+            <div className={styles.footer}>
               <span className={styles.totalLabel}>Total</span>
-              <span className={styles.totalValue}>{fmtAED(b.amountAED)}</span>
+              <span className={styles.totalVal}>{fmtAED(b.amountAED)}</span>
             </div>
           </li>
         ))}
 
-        {list.length === 0 && (
+        {paged.length === 0 && (
           <li className={styles.empty}>No items in this status.</li>
         )}
       </ul>
+
+      {/* Pagination */}
+      {total > 0 && (
+        <nav className={styles.pager} aria-label="Pagination">
+          <div className={styles.pagerL}>
+            <span className={styles.range}>{rangeStart}–{rangeEnd}</span>
+            <span className={styles.of}>of</span>
+            <span className={styles.total}>{total}</span>
+            <span className={styles.sep}>•</span>
+            <span className={styles.pgCount}>Page {page + 1} of {pageCount}</span>
+          </div>
+
+          <div className={styles.pagerR}>
+            <button className={styles.pgBtn} onClick={() => setPageSafe(0)} disabled={page === 0} aria-label="First page">«</button>
+            <button className={styles.pgBtn} onClick={() => setPageSafe(page - 1)} disabled={page === 0} aria-label="Previous page">‹</button>
+
+            <div className={styles.pgNums}>
+              {pageButtons.map((b, i) =>
+                b === "…" ? (
+                  <span key={`dots-${i}`} className={styles.ellipsis}>…</span>
+                ) : (
+                  <button
+                    key={b}
+                    className={`${styles.pgNum} ${b === page ? styles.pgNumActive : ""}`}
+                    onClick={() => setPageSafe(b)}
+                    aria-current={b === page ? "page" : undefined}
+                  >
+                    {b + 1}
+                  </button>
+                )
+              )}
+            </div>
+
+            <button className={styles.pgBtn} onClick={() => setPageSafe(page + 1)} disabled={page >= pageCount - 1} aria-label="Next page">›</button>
+            <button className={styles.pgBtn} onClick={() => setPageSafe(pageCount - 1)} disabled={page >= pageCount - 1} aria-label="Last page">»</button>
+          </div>
+        </nav>
+      )}
     </section>
   );
 }
