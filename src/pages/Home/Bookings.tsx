@@ -183,6 +183,24 @@ export default function Bookings() {
     return btns;
   }, [page, pageCount]);
 
+  const stats = useMemo(() => {
+    const spendStatuses: BackendStatus[] = ["paid", "completed"];
+    const requestStatuses: BackendStatus[] = ["requested", "awaiting_payment"];
+    const spend = bookings
+      .filter((b) => spendStatuses.includes(b.status))
+      .reduce((sum, b) => sum + b.amountAED, 0);
+    const next = [...bookings]
+      .filter((b) => requestStatuses.includes(b.status))
+      .sort((a, b) => new Date(a.fromISO).getTime() - new Date(b.fromISO).getTime())[0] || null;
+    const completed = bookings.filter((b) => b.status === "completed").length;
+    const awaiting = bookings.filter((b) => b.status === "awaiting_payment").length;
+    return { spend, next, completed, awaiting };
+  }, [bookings]);
+
+  const handleRequestService = () => {
+    navigate("/providers/s1?title=Deep%20Cleaning");
+  };
+
   return (
     <section className={styles.page}>
       {/* Header */}
@@ -193,6 +211,45 @@ export default function Bookings() {
             <h1 className={styles.h1}>Bookings</h1>
           </div>
         </div>
+      </div>
+
+      <div className={styles.summaryGrid}>
+        <article className={styles.summaryCard}>
+          <span className={styles.summaryLabel}>Completed value</span>
+          <strong className={styles.summaryValue}>{fmtAED(stats.spend)}</strong>
+          <span className={styles.summaryHint}>
+            {stats.completed ? `${stats.completed} job${stats.completed === 1 ? "" : "s"} completed` : "Secure your first completion"}
+          </span>
+        </article>
+        <article className={styles.summaryCard}>
+          <span className={styles.summaryLabel}>Awaiting payment</span>
+          <strong className={styles.summaryValue}>{stats.awaiting}</strong>
+          <span className={styles.summaryHint}>Send reminders to keep work moving</span>
+        </article>
+        <article className={styles.summaryCard}>
+          <span className={styles.summaryLabel}>Next booking</span>
+          {stats.next ? (
+            <>
+              <strong className={styles.summaryValue}>{fmtRange(stats.next.fromISO, stats.next.toISO)}</strong>
+              <span className={styles.summaryHint}>{stats.next.title}</span>
+            </>
+          ) : (
+            <>
+              <strong className={styles.summaryValue}>No upcoming</strong>
+              <span className={styles.summaryHint}>Plan your next service request</span>
+            </>
+          )}
+        </article>
+      </div>
+
+      <div className={styles.requestBanner}>
+        <div className={styles.requestCopy}>
+          <span className={styles.requestEyebrow}>Need support?</span>
+          <p className={styles.requestTitle}>Request a new service and we’ll match you with vetted providers.</p>
+        </div>
+        <button className={styles.requestButton} type="button" onClick={handleRequestService}>
+          Find providers
+        </button>
       </div>
 
       {/* Tabs (neutral) */}

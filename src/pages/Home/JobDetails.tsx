@@ -1,324 +1,614 @@
-import React, { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import styles from "./JobDetails.module.css";
+import {
+  CONSUMER_JOBS_UPDATED_EVENT,
+  getJobById,
+  listCountryMeta,
+  type DemoApplication,
+  type DemoJob,
+} from "@/data/demoJobs";
+import CountryFlag from "react-country-flag";
 
-/* ---------- Types ---------- */
-type Service = { id: string; label: string };
-type JobDetails = {
-  id: string;
-  title: string;
-  customerName: string;
-  image?: string;
-  fromISO: string;
-  toISO: string;
-  priceAED: number;
-  description: string;
-  services: Service[];
-  coords: { lat: number; lng: number };
-  address: string;
+const formatCurrency = (minor: number, currency: string) => {
+  const major = minor / 100;
+  return `${currency} ${major.toLocaleString("en-AE", { minimumFractionDigits: 2 })}`;
 };
 
-/* ---------- Helpers ---------- */
-const fmtAED = (v: number) =>
-  `AED ${v.toLocaleString("en-AE", { maximumFractionDigits: 0 })}`;
+const isSameDay = (a: Date, b: Date) =>
+  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
-const sameDay = (a: Date, b: Date) =>
-  a.getFullYear() === b.getFullYear() &&
-  a.getMonth() === b.getMonth() &&
-  a.getDate() === b.getDate();
-
-const fmtRange = (fromISO: string, toISO: string) => {
-  const a = new Date(fromISO);
-  const b = new Date(toISO);
-  const dA = a.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  const dB = b.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  const tA = a.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-  const tB = b.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-  return sameDay(a, b) ? `${dA} • ${tA} – ${tB}` : `${dA} ${tA} → ${dB} ${tB}`;
+const formatRange = (fromISO: string, toISO: string) => {
+  const start = new Date(fromISO);
+  const end = new Date(toISO);
+  const dateA = start.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const dateB = end.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const timeA = start.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  const timeB = end.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  return isSameDay(start, end)
+    ? `${dateA} • ${timeA} – ${timeB}`
+    : `${dateA} ${timeA} → ${dateB} ${timeB}`;
 };
 
-const durationLabel = (fromISO: string, toISO: string) => {
-  const ms = new Date(toISO).getTime() - new Date(fromISO).getTime();
-  const h = Math.max(1, Math.round(ms / 3_600_000));
-  return `${h}h`;
+const formatDuration = (fromISO: string, toISO: string) => {
+  const diffMs = new Date(toISO).getTime() - new Date(fromISO).getTime();
+  const minutes = Math.max(60, Math.round(diffMs / 60000));
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (!mins) return `${hours}h`;
+  if (!hours) return `${mins}m`;
+  return `${hours}h ${mins}m`;
 };
 
-/* ---------- Fallbacks/Seeds ---------- */
-const FALLBACK_IMAGES: Record<string, string> = {
-  cleaning:
-    "https://media.istockphoto.com/id/654153664/photo/cleaning-service-sponges-chemicals-and-mop.jpg?s=612x612&w=0&k=20&c=vHQzKbz7L8oEKEp5oQzfx8rwsOMAV3pHTV_1VPZsREA=",
-  barista:
-    "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=1200&auto=format&fit=crop",
-  hostess:
-    "https://images.unsplash.com/photo-1556745757-8d76bdb6984b?q=80&w=1200&auto=format&fit=crop",
-  security:
-    "https://images.unsplash.com/photo-1544473244-f6895e69ad8b?q=80&w=1200&auto=format&fit=crop",
-  driver:
-    "https://images.unsplash.com/photo-1529078155058-5d716f45d604?q=80&w=1200&auto=format&fit=crop",
-  default:
-    "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=1200&auto=format&fit=crop",
+const formatSubmitted = (iso: string) =>
+  new Date(iso).toLocaleString(undefined, {
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+const jobStatusMeta: Record<DemoJob["status"], { label: string }> = {
+  open: { label: "Active" },
+  in_progress: { label: "In progress" },
+  completed: { label: "Completed" },
+  closed: { label: "Closed" },
+  draft: { label: "Draft" },
 };
 
-const DEFAULT_SERVICES: Record<string, Service[]> = {
-  cleaning: [
-    { id: "basic", label: "Basic Cleaning" },
-    { id: "deep", label: "Deep Cleaning" },
-    { id: "kitchen", label: "Kitchen Focus" },
-  ],
-  barista: [
-    { id: "bar-setup", label: "Bar Setup" },
-    { id: "latte-art", label: "Latte Art" },
-    { id: "closing", label: "Closing Shift" },
-  ],
-  hostess: [
-    { id: "greeting", label: "Guest Greeting" },
-    { id: "seating", label: "Seating & Flow" },
-    { id: "vip", label: "VIP Desk" },
-  ],
-  security: [
-    { id: "patrol", label: "Patrol & Access" },
-    { id: "entry", label: "Entry Control" },
-    { id: "night", label: "Night Shift" },
-  ],
-  driver: [
-    { id: "city", label: "City Ride" },
-    { id: "airport", label: "Airport Pickup" },
-    { id: "vip-driver", label: "VIP Driver" },
-  ],
-  default: [{ id: "standard", label: "Standard" }],
+const appStatusMeta: Record<DemoApplication["status"], { label: string; tone: "pending" | "accepted" | "rejected" }> = {
+  pending: { label: "Pending", tone: "pending" },
+  accepted: { label: "Accepted", tone: "accepted" },
+  rejected: { label: "Rejected", tone: "rejected" },
 };
 
-/* ---------- Tiny deterministic RNG from id ---------- */
-function hashString(s: string) {
-  let h = 2166136261 >>> 0;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
-const pick = <T,>(arr: T[], seed: string) => arr[hashString(seed) % arr.length];
+type Profile = {
+  role?: "provider" | "consumer";
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+};
 
-/* ---------- Build from Home list if present ---------- */
-function deriveFromHomeList(id: string): JobDetails | null {
+const APPLIED_JOBS_STORAGE_KEY = "provider.appliedJobs";
+
+function loadAppliedJobs(): string[] {
+  if (typeof window === "undefined") return [];
   try {
-    const jobs = JSON.parse(localStorage.getItem("jobs") || "[]");
-    const j = Array.isArray(jobs) ? jobs.find((x: any) => x.id === id) : null;
-    if (!j) return null;
-
-    const from = new Date();
-    from.setHours(from.getHours() + 48, 0, 0, 0);
-    const to = new Date(from.getTime() + 3 * 3600_000);
-
-    const cat: string = j.category || "default";
-    const svcs = DEFAULT_SERVICES[cat] || DEFAULT_SERVICES.default;
-    const img = j.image || FALLBACK_IMAGES[cat] || FALLBACK_IMAGES.default;
-
-    const perHour = Number(localStorage.getItem(`price.hr.${id}`)) || 80;
-    const price = Math.max(50, perHour * 3);
-
-    return {
-      id,
-      title: j.title || "Job",
-      customerName: j.consumerName || "Customer",
-      image: img,
-      fromISO: from.toISOString(),
-      toISO: to.toISOString(),
-      priceAED: price,
-      description:
-        "We’re looking for a reliable professional. Please review the details and pick the service that fits best. Supplies available on site unless noted otherwise.",
-      services: svcs,
-      coords: { lat: 25.08, lng: 55.14 },
-      address: "Dubai Marina, Dubai, UAE",
-    };
+    const raw = localStorage.getItem(APPLIED_JOBS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed.filter((id): id is string => typeof id === "string");
+    }
   } catch {
-    return null;
+    /* ignore */
+  }
+  return [];
+}
+
+function isJobAlreadyApplied(jobId: string): boolean {
+  if (!jobId) return false;
+  return loadAppliedJobs().includes(jobId);
+}
+
+function storeAppliedJob(jobId: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const existing = new Set(loadAppliedJobs());
+    existing.add(jobId);
+    localStorage.setItem(APPLIED_JOBS_STORAGE_KEY, JSON.stringify(Array.from(existing)));
+  } catch {
+    /* ignore */
   }
 }
 
-/* ---------- Guaranteed stub when nothing exists ---------- */
-function makeStubJob(id: string): JobDetails {
-  const categories = ["cleaning", "barista", "hostess", "security", "driver"] as const;
-  const cat = pick(categories as unknown as string[], `cat:${id}`);
-  const titleByCat: Record<string, string> = {
-    cleaning: "House Cleaning - 2BR",
-    barista: "Barista (Morning Shift)",
-    hostess: "Event Hostess",
-    security: "Night Security",
-    driver: "Private Driver",
-  };
-  const customerByCat: Record<string, string> = {
-    cleaning: "Acme Holdings LLC",
-    barista: "Café Latté",
-    hostess: "Blue Events",
-    security: "Azure Mall",
-    driver: "H. Mansour",
-  };
-
-  const from = new Date();
-  from.setDate(from.getDate() + 2);
-  from.setHours(10, 0, 0, 0);
-  const to = new Date(from.getTime() + 3 * 3600_000);
-
-  const basePerHour = [70, 80, 90, 100][hashString(`p:${id}`) % 4];
-  const price = basePerHour * 3; // ~3h
-
-  return {
-    id,
-    title: titleByCat[cat] || "Sample Job",
-    customerName: customerByCat[cat] || "Customer",
-    image: FALLBACK_IMAGES[cat] || FALLBACK_IMAGES.default,
-    fromISO: from.toISOString(),
-    toISO: to.toISOString(),
-    priceAED: price,
-    description:
-      "We’re looking for a professional to help with this job. Focus on quality and punctuality. Supplies available on site unless noted.",
-    services: DEFAULT_SERVICES[cat] || DEFAULT_SERVICES.default,
-    coords: { lat: 25.0805 + (hashString(`lat:${id}`) % 1000) / 100000, lng: 55.141 + (hashString(`lng:${id}`) % 1000) / 100000 },
-    address: "Dubai Marina, Dubai, UAE",
-  };
-}
-
-/* ---------- Loader with persistence ---------- */
-function loadJobDetails(id: string): JobDetails {
-  try {
-    const raw = localStorage.getItem(`job.details.${id}`);
-    if (raw) return JSON.parse(raw) as JobDetails;
-  } catch {}
-
-  const derived = deriveFromHomeList(id) ?? makeStubJob(id);
-
-  // persist so subsequent opens are instant
-  try { localStorage.setItem(`job.details.${id}`, JSON.stringify(derived)); } catch {}
-  return derived;
-}
-
-/* ---------- Service option (web analogue of ServiceCard) ---------- */
-function ServiceOption({
-  svc,
-  selected,
-  onSelect,
+function ApplicationCard({
+  application,
+  countryName,
+  hourlyMinor,
+  currency,
+  onView,
 }: {
-  svc: Service;
-  selected: boolean;
-  onSelect: () => void;
+  application: DemoApplication;
+  countryName?: string;
+  hourlyMinor?: number;
+  currency: string;
+  onView: () => void;
 }) {
+  const status = appStatusMeta[application.status];
   return (
-    <button
-      type="button"
-      className={`${styles.svc} ${selected ? styles.svcActive : ""}`}
-      onClick={onSelect}
-      aria-pressed={selected}
-    >
-      <span className={`${styles.radio} ${selected ? styles.radioOn : ""}`} />
-      <span className={styles.svcLabel}>{svc.label}</span>
-    </button>
+    <article className={styles.appCard}>
+      <header className={styles.appCardHeader}>
+        <div className={styles.appProviderRow}>
+          <img src={application.provider.avatar} alt="" className={styles.appAvatar} />
+          <div className={styles.appProviderText}>
+            <span className={styles.appProviderName}>{application.provider.name}</span>
+            <span className={styles.appProviderMeta}>
+              {application.provider.rating.toFixed(1)} ★ • {application.provider.jobsCompleted} jobs
+            </span>
+          </div>
+        </div>
+        <span className={`${styles.appStatus} ${styles[`appStatus_${status.tone}`]}`}>
+          {status.label}
+        </span>
+      </header>
+
+      <dl className={styles.appMetaList}>
+        <div className={styles.appMetaRow}>
+          <dt>Submitted</dt>
+          <dd>{formatSubmitted(application.submittedAt)}</dd>
+        </div>
+        <div className={styles.appMetaRow}>
+          <dt>Service</dt>
+          <dd>{application.service.label}</dd>
+        </div>
+        {application.countryCode && (
+          <div className={styles.appMetaRow}>
+            <dt>Country</dt>
+            <dd className={styles.appCountryCell}>
+              <CountryFlag
+                countryCode={application.countryCode}
+                svg
+                style={{ width: 18, height: 18, borderRadius: 4 }}
+              />
+              <span>{countryName || application.countryCode}</span>
+            </dd>
+          </div>
+        )}
+        {hourlyMinor ? (
+          <div className={styles.appMetaRow}>
+            <dt>Hourly rate</dt>
+            <dd>{formatCurrency(hourlyMinor, currency)} / hr</dd>
+          </div>
+        ) : null}
+        <div className={styles.appMetaRow}>
+          <dt>Total cost</dt>
+          <dd>{formatCurrency(application.priceMinor, application.currency)}</dd>
+        </div>
+      </dl>
+
+      {application.note && <p className={styles.appNote}>{application.note}</p>}
+
+      <footer className={styles.appActions}>
+        <button type="button" className={styles.appBtn} onClick={onView}>
+          View application
+        </button>
+      </footer>
+    </article>
   );
 }
 
-/* ---------- Page ---------- */
 export default function JobDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const job = useMemo(() => (id ? loadJobDetails(id) : makeStubJob("demo")), [id]);
-  const [selectedService, setSelectedService] = useState<string>("");
+  const profile = useMemo<Profile>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("profile") || "{}") as Profile;
+    } catch {
+      return {};
+    }
+  }, []);
+  const role = profile?.role ?? null;
+  const isProvider = role === "provider";
 
-  const timeRange = fmtRange(job.fromISO, job.toISO);
-  const duration = durationLabel(job.fromISO, job.toISO);
+  const [job, setJob] = useState<DemoJob | null>(() => (id ? getJobById(id) : null));
+  const [hasApplied, setHasApplied] = useState(false);
+  const countryMeta = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof listCountryMeta>[number]>();
+    listCountryMeta().forEach((entry) => map.set(entry.code, entry));
+    return map;
+  }, []);
+
+  const serviceStats = useMemo(() => {
+    const stats = new Map<string, { total: number; accepted: number; countries: Set<string> }>();
+    job?.applications.forEach((app) => {
+      const svcId = app.service?.id;
+      if (!svcId) return;
+      const entry = stats.get(svcId) ?? { total: 0, accepted: 0, countries: new Set<string>() };
+      entry.total += 1;
+      if (app.status === "accepted") entry.accepted += 1;
+      if (app.countryCode) entry.countries.add(app.countryCode);
+      stats.set(svcId, entry);
+    });
+    return stats;
+  }, [job]);
+
+  const refresh = useCallback(() => {
+    if (!id) return;
+    setJob(getJobById(id));
+  }, [id]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    const handler = () => refresh();
+    window.addEventListener(CONSUMER_JOBS_UPDATED_EVENT, handler);
+    window.addEventListener("storage", handler);
+    window.addEventListener("focus", handler);
+    return () => {
+      window.removeEventListener(CONSUMER_JOBS_UPDATED_EVENT, handler);
+      window.removeEventListener("storage", handler);
+      window.removeEventListener("focus", handler);
+    };
+  }, [refresh]);
+
+  useEffect(() => {
+    if (!job) {
+      setHasApplied(false);
+      return;
+    }
+    setHasApplied(isJobAlreadyApplied(job.id));
+  }, [job]);
+
+  const timeRange = useMemo(() => (job ? formatRange(job.schedule.fromISO, job.schedule.toISO) : ""), [job]);
+  const duration = useMemo(
+    () => (job ? formatDuration(job.schedule.fromISO, job.schedule.toISO) : ""),
+    [job]
+  );
+
+  const jobDurationMinutes = useMemo(() => {
+    if (!job) return null;
+    const from = new Date(job.schedule.fromISO).getTime();
+    const to = new Date(job.schedule.toISO).getTime();
+    const diff = Math.max(0, to - from);
+    return Math.round(diff / 60000);
+  }, [job]);
+
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+
+  const formatCategoryLabel = (value: string) =>
+    value
+      .split("_")
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+
+  useEffect(() => {
+    setSelectedServiceId(null);
+  }, [isProvider, job?.id]);
+
+  const selectedService = useMemo(() => {
+    if (!job || !selectedServiceId) return null;
+    return job.services.find((svc) => svc.id === selectedServiceId) ?? null;
+  }, [job, selectedServiceId]);
+
+  const selectedServiceStats = useMemo(() => {
+    if (!selectedServiceId) return null;
+    return serviceStats.get(selectedServiceId) ?? null;
+  }, [serviceStats, selectedServiceId]);
+
+  const selectedCapacity = Math.max(1, selectedService?.providersRequired ?? 1);
+  const selectedAccepted = selectedServiceStats?.accepted ?? 0;
+  const selectedFull = selectedAccepted >= selectedCapacity;
+  const canApply = isProvider && !hasApplied && !!selectedService && !selectedFull;
 
   const openMaps = () => {
+    if (!job) return;
+    if (job.locationLink) {
+      window.open(job.locationLink, "_blank", "noreferrer");
+      return;
+    }
     const addr = encodeURIComponent(job.address);
     window.open(`https://www.google.com/maps/search/?api=1&query=${addr}`, "_blank", "noreferrer");
   };
 
-  const apply = () => {
-    if (!selectedService) return;
-    const label = job.services.find(s => s.id === selectedService)?.label || selectedService;
-    window.alert(`Application sent\n\nJob: ${job.title}\nWith: ${label}`);
-  };
+  const handleApply = useCallback(() => {
+    if (!job || !canApply || !selectedService) return;
+    setHasApplied(true);
+    storeAppliedJob(job.id);
+    if (typeof window !== "undefined") {
+      try {
+        window.dispatchEvent(new CustomEvent("provider-job-applied", { detail: { jobId: job.id } }));
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [job, canApply, selectedService]);
+
+  if (!job) {
+    return (
+      <section className={styles.page}>
+        <header className={styles.header}>
+          <button className={styles.iconBtn} onClick={() => navigate(-1)} aria-label="Back">
+            ←
+          </button>
+          <div className={styles.headerText}>
+            <h1 className={styles.h1}>Job Details</h1>
+            <p className={styles.sub}>Not found</p>
+          </div>
+        </header>
+        <div className={styles.missing}>Job not found.</div>
+      </section>
+    );
+  }
+
+  const status = jobStatusMeta[job.status];
+  const categoryLabel = useMemo(() => formatCategoryLabel(job.category), [job.category]);
+  const heroStats = useMemo(() => {
+    const base = [
+      { label: "Schedule", value: timeRange },
+      { label: "Duration", value: duration },
+      { label: "Posted", value: job.postedAt },
+    ];
+    if (!isProvider) {
+      base.push({ label: "Applications", value: `${job.applications.length} total` });
+    }
+    return base.filter((item) => item.value);
+  }, [timeRange, duration, job.postedAt, job.applications.length, isProvider]);
+  const statusTone = styles[`jobHeroStatus_${job.status}`] || "";
 
   return (
     <section className={styles.page}>
-      {/* Header */}
       <header className={styles.header}>
-        <button className={styles.iconBtn} onClick={() => navigate(-1)} aria-label="Back">←</button>
+        <button className={styles.iconBtn} onClick={() => navigate(-1)} aria-label="Back">
+          ←
+        </button>
         <div className={styles.headerText}>
           <h1 className={styles.h1}>Job Details</h1>
-          <p className={styles.sub}>{job.customerName}</p>
+          <p className={styles.sub}>{status.label}</p>
         </div>
       </header>
 
-      {/* Hero */}
-      <div className={styles.heroRow}>
-        <img src={job.image} alt="" className={styles.cover} />
-        <div className={styles.heroText}>
-          <h2 className={styles.title}>{job.title}</h2>
-          <p className={styles.customer}>{job.customerName}</p>
+      <section className={styles.jobHeroCard}>
+        <div className={styles.jobHeroMedia}>
+          <img src={job.image} alt="" className={styles.jobHeroImage} />
         </div>
-      </div>
-
-      {/* Meta */}
-      <section className={styles.card}>
-        <div className={styles.metaRow}>
-          <span className={styles.metaIcon} aria-hidden>🗓️</span>
-          <span className={styles.timeText}>{timeRange} — {duration}</span>
-        </div>
-        <div className={styles.metaRow}>
-          <span className={styles.metaIcon} aria-hidden>💵</span>
-          <span className={styles.priceText}>{fmtAED(job.priceAED)}</span>
+        <div className={styles.jobHeroBody}>
+          <div className={styles.jobHeroHeader}>
+            <span className={styles.jobHeroCategory}>{categoryLabel}</span>
+            <span className={`${styles.jobHeroStatus} ${statusTone}`}>{status.label}</span>
+          </div>
+          <h2 className={styles.jobHeroTitle}>{job.title}</h2>
+          <p className={styles.jobHeroLocation}>{job.address}</p>
+          <div className={styles.jobHeroStats}>
+            {heroStats.map((stat) => (
+              <div key={stat.label} className={styles.jobHeroStat}>
+                <span>{stat.label}</span>
+                <strong>{stat.value}</strong>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* Description */}
       <section className={styles.card}>
         <h3 className={styles.sectionLabel}>Description</h3>
         <p className={styles.body}>{job.description}</p>
       </section>
 
-      {/* Services */}
-      <section className={styles.card}>
-        <h3 className={styles.sectionLabel}>Select a service</h3>
-        <div className={styles.svcList}>
-          {job.services.map((svc) => (
-            <ServiceOption
-              key={svc.id}
-              svc={svc}
-              selected={selectedService === svc.id}
-              onSelect={() => setSelectedService(svc.id)}
-            />
-          ))}
-        </div>
-      </section>
+      {!!job.services.length && (
+        <section className={styles.card}>
+          <h3 className={styles.sectionLabel}>Services requested</h3>
+          <div className={styles.serviceGrid}>
+            {job.services.map((svc) => {
+              const serviceDuration = jobDurationMinutes
+                ? jobDurationMinutes >= 60
+                  ? `${Math.round(jobDurationMinutes / 60)}h`
+                  : `${jobDurationMinutes} min`
+                : duration;
+              const price = svc.priceMinor ? formatCurrency(svc.priceMinor, job.currency) : null;
+              const countries = (svc.allowedCountries || []).map((code) => countryMeta.get(code)?.name ?? code);
+              const stat = serviceStats.get(svc.id);
+              const showApplicationInsights = !isProvider;
+              const appliedCount = stat?.total ?? 0;
+              const acceptedCount = stat?.accepted ?? 0;
+              const pendingCount = Math.max(0, appliedCount - acceptedCount);
+              const appliedCountryNames = stat
+                ? Array.from(stat.countries).map((code) => countryMeta.get(code)?.name ?? code)
+                : [];
+              const capacity = Math.max(1, svc.providersRequired ?? 1);
+              const spotsLeft = Math.max(0, capacity - acceptedCount);
+              const isFull = acceptedCount >= capacity;
+              const isSelected = selectedServiceId === svc.id;
 
-      {/* Address */}
+              const cardClasses = [styles.serviceCard];
+              if (isProvider) cardClasses.push(styles.serviceCardSelectable);
+              if (isProvider && isSelected) cardClasses.push(styles.serviceCardSelected);
+              if (isProvider && isFull) cardClasses.push(styles.serviceCardDisabled);
+
+              return (
+                <article
+                  key={svc.id}
+                  className={cardClasses.join(" ")}
+                  role={isProvider ? "button" : undefined}
+                  aria-pressed={isProvider ? isSelected : undefined}
+                  onClick={() => {
+                    if (!isProvider || isFull) return;
+                    setSelectedServiceId(svc.id);
+                  }}
+                >
+                  <header className={styles.serviceCardHeader}>
+                    <div className={styles.serviceTitleRow}>
+                      {isProvider ? (
+                        <span className={styles.serviceRadio}>
+                          <span className={styles.serviceRadioOuter}>
+                            {isSelected && <span className={styles.serviceRadioInner} />}
+                          </span>
+                        </span>
+                      ) : null}
+                      <div>
+                        <h4 className={styles.serviceName}>{svc.label}</h4>
+                        <p className={styles.serviceDuration}>Duration • {serviceDuration}</p>
+                      </div>
+                    </div>
+                    {price ? <span className={styles.servicePrice}>{price}</span> : null}
+                  </header>
+
+                  {showApplicationInsights && (
+                    <dl className={styles.serviceStatsGrid}>
+                      <div>
+                        <dt>Need</dt>
+                        <dd>{capacity || "—"}</dd>
+                      </div>
+                      <div>
+                        <dt>Pending</dt>
+                        <dd>{pendingCount}</dd>
+                      </div>
+                      <div>
+                        <dt>Applied</dt>
+                        <dd>{capacity ? `${appliedCount}/${capacity}` : appliedCount}</dd>
+                      </div>
+                      <div>
+                        <dt>Spots left</dt>
+                        <dd>{capacity ? (spotsLeft > 0 ? spotsLeft : "Full") : "—"}</dd>
+                      </div>
+                    </dl>
+                  )}
+
+                  {countries.length > 0 && (
+                    <div className={styles.serviceCountries}>
+                      {countries.map((name) => (
+                        <span key={name} className={styles.serviceCountryBadge}>{name}</span>
+                      ))}
+                    </div>
+                  )}
+
+                  {isProvider && capacity ? (
+                    <div className={styles.providerServiceStats}>
+                      <div>
+                        <span>Need</span>
+                        <strong>{capacity}</strong>
+                      </div>
+                      <div>
+                        <span>Accepted</span>
+                        <strong>{acceptedCount}/{capacity}</strong>
+                      </div>
+                      <div>
+                        <span>Pending</span>
+                        <strong>{pendingCount}</strong>
+                      </div>
+                      <div>
+                        <span>Spots left</span>
+                        <strong>{spotsLeft > 0 ? spotsLeft : "Full"}</strong>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {(svc.allowedCountries || []).length > 0 && (
+                    <div className={styles.serviceRateList}>
+                      {(svc.allowedCountries || []).map((code) => {
+                        const meta = countryMeta.get(code);
+                        if (!meta) return null;
+                        return (
+                          <div key={code} className={styles.serviceRateRow}>
+                            <CountryFlag
+                              countryCode={code}
+                              svg
+                              style={{ width: 16, height: 16, borderRadius: 4 }}
+                            />
+                            <span>{meta.name}</span>
+                            <span className={styles.serviceRateValue}>
+                              {formatCurrency(meta.rateMinor, job.currency)} / hr
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {showApplicationInsights && appliedCountryNames.length > 0 && (
+                    <div className={styles.appliedCountries}>
+                      <span className={styles.appliedLabel}>Applied from:</span>
+                      {appliedCountryNames.map((name) => (
+                        <span key={name} className={styles.serviceCountryBadge}>{name}</span>
+                      ))}
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       <section className={styles.card}>
         <h3 className={styles.sectionLabel}>Address</h3>
         <div className={styles.mapWrap}>
           <iframe
-            title="map"
+            title="Location"
             className={styles.map}
             loading="lazy"
-            src={`https://maps.google.com/maps?q=${encodeURIComponent(
-              `${job.coords.lat},${job.coords.lng}`
-            )}&z=14&output=embed`}
+            src={`https://maps.google.com/maps?q=${encodeURIComponent(`${job.coords.lat},${job.coords.lng}`)}&z=14&output=embed`}
           />
-          <button className={styles.mapBtn} onClick={openMaps}>Open in Maps</button>
+          <button type="button" className={styles.mapBtn} onClick={openMaps}>
+            Open in Maps
+          </button>
         </div>
         <p className={styles.body}>{job.address}</p>
+        <p className={styles.body} style={{ opacity: 0.7 }}>
+          Coordinates: {job.coords.lat.toFixed(5)}, {job.coords.lng.toFixed(5)}
+        </p>
+        {job.locationLink ? (
+          <button
+            type="button"
+            className={styles.mapLinkBtn}
+            onClick={() => job.locationLink && window.open(job.locationLink, "_blank", "noreferrer")}
+          >
+            View shared map link
+          </button>
+        ) : null}
       </section>
 
-      {/* Sticky footer */}
-      <div className={styles.footer}>
-        <button
-          className={styles.primaryBtn}
-          onClick={apply}
-          disabled={!selectedService}
-          aria-disabled={!selectedService}
-        >
-          Apply for this job
-        </button>
-      </div>
+      {isProvider && (
+        <section className={styles.card}>
+          <h3 className={styles.sectionLabel}>Ready to apply?</h3>
+          <p className={styles.body}>
+            Submit your application to let the consumer know you're available.
+          </p>
+          <button
+            type="button"
+            className={styles.applyButton}
+            onClick={handleApply}
+            disabled={!canApply}
+          >
+            {hasApplied
+              ? "Application sent"
+              : canApply
+              ? "Apply for the job!!"
+              : selectedService && selectedFull
+              ? "Service full"
+              : "Select a service"}
+          </button>
+          {hasApplied && (
+            <p className={styles.applyNote}>
+              We'll keep you posted in the Applications tab.
+            </p>
+          )}
+        </section>
+      )}
+
+      {!isProvider && (
+        <section className={styles.card}>
+          <div className={styles.cardHeading}>
+            <h3 className={styles.sectionLabel}>Applications</h3>
+            <span className={styles.badgeCounter}>{job.applications.length}</span>
+          </div>
+          <div className={styles.appList}>
+            {job.applications.length === 0 ? (
+              <div className={styles.noApplications}>No applications yet. We'll notify you when providers apply.</div>
+            ) : (
+              job.applications.map((application) => {
+                const meta = application.countryCode ? countryMeta.get(application.countryCode) : undefined;
+                const countryName = meta?.name;
+                const hourlyMinor = meta?.rateMinor;
+                const currency = meta?.currency ?? application.currency;
+                return (
+                  <ApplicationCard
+                    key={application.id}
+                    application={application}
+                    countryName={countryName}
+                    hourlyMinor={hourlyMinor}
+                    currency={currency}
+                    onView={() => navigate(`/applications/${application.id}?jobId=${job.id}`)}
+                  />
+                );
+              })
+            )}
+          </div>
+        </section>
+      )}
     </section>
   );
 }

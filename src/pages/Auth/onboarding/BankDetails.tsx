@@ -108,7 +108,8 @@ export default function BankDetails() {
     if ((profile as any)?.role === "provider") {
       navigate("/auth/ProviderServices");
     } else {
-      navigate("/home");
+      // If a consumer reaches here, still continue to approval
+      navigate("/auth/approval?role=consumer");
     }
   };
 

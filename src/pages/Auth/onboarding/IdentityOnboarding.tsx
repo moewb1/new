@@ -234,7 +234,8 @@ export default function IdentityOnboarding() {
     };
 
     localStorage.setItem("kyc.identity", JSON.stringify(identity));
-      navigate("/auth/BankDetails");
+    // Both roles go through Bank Details; consumers skip services later
+    navigate("/auth/BankDetails");
   };
 
   /* react-select inline styles */

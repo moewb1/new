@@ -43,7 +43,7 @@ export default function ProviderServices() {
     setSubmitted(true);
     if (selected.length === 0) return;
     localStorage.setItem("provider.services", JSON.stringify(selected));
-    navigate("/home");
+    navigate("/auth/approval?role=provider");
   };
 
   return (

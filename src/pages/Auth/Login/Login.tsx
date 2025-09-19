@@ -1,6 +1,6 @@
 import React from "react";
 import styles from "./Login.module.css";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams, createSearchParams } from "react-router-dom";
 import colors from "@/styles/colors";
 
 /* reuse the same assets you added for signup */
@@ -9,6 +9,7 @@ import googleLogo from "@/assets/Google_logo.svg.webp";
 
 export default function Login() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -26,6 +27,12 @@ export default function Login() {
   const showEmailError = (touchedEmail || submitted) && !isValidEmail;
   const showPassError = (touchedPassword || submitted) && !isValidPass;
 
+  // Initialize role from URL on mount
+  React.useEffect(() => {
+    const r = searchParams.get("role");
+    if (r === "provider" || r === "consumer") setRole(r);
+  }, [searchParams]);
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
@@ -38,8 +45,12 @@ export default function Login() {
 
     // 2FA step -> go to OTP
     sessionStorage.setItem("onboardingFlow", "login");
-    const roleQS = role ? `&role=${role}` : "";
-    navigate(`/auth/otp?email=${encodeURIComponent(email)}&flow=login${roleQS}`);
+    const params: Record<string, string> = {
+      email: email,
+      flow: "login",
+    };
+    if (role) params.role = role;
+    navigate(`/auth/otp?${createSearchParams(params).toString()}`);
   };
 
   return (
@@ -58,30 +69,6 @@ export default function Login() {
       </div>
 
       <form className={styles.box} onSubmit={onSubmit} noValidate>
-        {/* Optional role selection for login */}
-        <div style={{ display: 'grid', gap: 8 }}>
-          <div style={{ fontWeight: 800, opacity: .85 }}>Log in as</div>
-          <div className={styles.segment} role="tablist" aria-label="Login role">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={role === 'provider'}
-              className={`${styles.segBtn} ${role === 'provider' ? styles.segActive : ''}`}
-              onClick={() => setRole(role === 'provider' ? '' : 'provider')}
-            >
-              Provider
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={role === 'consumer'}
-              className={`${styles.segBtn} ${role === 'consumer' ? styles.segActive : ''}`}
-              onClick={() => setRole(role === 'consumer' ? '' : 'consumer')}
-            >
-              Consumer
-            </button>
-          </div>
-        </div>
         <label className={`${styles.inputWrap} ${showEmailError ? styles.inputError : ""}`}>
           <input
             className={styles.input}
@@ -124,7 +111,15 @@ export default function Login() {
           <button
             type="button"
             className={styles.forgotBtn}
-            onClick={() => navigate(`/auth/forgot-password${email ? `?email=${encodeURIComponent(email)}` : ""}`)}
+            onClick={() => {
+              const params: Record<string, string> = {};
+              if (email) params.email = email;
+              if (role) params.role = role;
+              const qs = Object.keys(params).length
+                ? `?${createSearchParams(params).toString()}`
+                : "";
+              navigate(`/auth/forgot-password${qs}`);
+            }}
           >
             Forgot Password?
           </button>
@@ -158,41 +153,16 @@ export default function Login() {
       </div>
 
       {/* Quick static login (provider / consumer) */}
-      <div className={styles.socialBlock}>
-        <div className={styles.socialTitle}>Quick Login (Demo)</div>
-        <div className={styles.socialRow}>
-          <button
-            type="button"
-            className={styles.socialBtn}
-            onClick={() => {
-              localStorage.setItem("auth", JSON.stringify({ authenticated: true }));
-              const p = JSON.parse(localStorage.getItem("profile") || "{}") || {};
-              p.role = "provider";
-              localStorage.setItem("profile", JSON.stringify(p));
-              navigate("/home");
-            }}
-          >
-            Provider
-          </button>
-          <button
-            type="button"
-            className={styles.socialBtn}
-            onClick={() => {
-              localStorage.setItem("auth", JSON.stringify({ authenticated: true }));
-              const p = JSON.parse(localStorage.getItem("profile") || "{}") || {};
-              p.role = "consumer";
-              localStorage.setItem("profile", JSON.stringify(p));
-              navigate("/home");
-            }}
-          >
-            Consumer
-          </button>
-        </div>
-      </div>
+      {/* Removed Quick Login (Demo) buttons to avoid static role shortcuts */}
 
       <p className={styles.foot}>
         Not Registered Yet?{" "}
-        <Link to="/auth/signup" className={styles.link}>Sign Up</Link>
+        <Link
+          to={`/auth/signup${role ? `?role=${role}` : ""}`}
+          className={styles.link}
+        >
+          Sign Up
+        </Link>
       </p>
     </section>
   );

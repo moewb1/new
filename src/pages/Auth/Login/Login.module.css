@@ -123,3 +123,9 @@
   border-color: rgba(198, 40, 40, 0.5) !important;
   box-shadow: 0 0 0 3px rgba(198, 40, 40, 0.12) !important;
 }
+
+/* Role segment */
+.segment { display: inline-flex; background: #fff; border: 2px solid rgba(0,0,0,0.06); border-radius: 999px; overflow: hidden; }
+.segBtn { padding: 8px 12px; font-weight: 900; background: transparent; border: 0; cursor: pointer; }
+.segBtn + .segBtn { border-left: 1px solid rgba(0,0,0,0.06); }
+.segActive { background: rgba(169,174,155,0.12); }

@@ -143,6 +143,23 @@ export default function Applications() {
     return c;
   }, [apps]);
 
+  const summary = useMemo(() => {
+    const pipeline = apps.filter((a) => a.status === "pending").reduce((sum, a) => sum + a.amountAED, 0);
+    const won = apps.filter((a) => a.status === "accepted").reduce((sum, a) => sum + a.amountAED, 0);
+    const responseTime = apps.length
+      ? Math.round(
+          apps.reduce((sum, a) => sum + (Date.now() - new Date(a.appliedAtISO).getTime()), 0) /
+            apps.length /
+            (3600_000 * 24)
+        )
+      : 0;
+    return { pipeline, won, responseTime };
+  }, [apps]);
+
+  const requestMoreWork = () => {
+    navigate("/jobs/post");
+  };
+
   const list = useMemo(() => apps.filter(a => a.status === tab), [apps, tab]);
 
   const total = list.length;
@@ -186,6 +203,36 @@ export default function Applications() {
         </div>
       </div>
 
+      <div className={styles.summaryGrid}>
+        <article className={styles.summaryCard}>
+          <span className={styles.summaryLabel}>Open pipeline</span>
+          <strong className={styles.summaryValue}>{fmtAED(summary.pipeline)}</strong>
+          <span className={styles.summaryHint}>{counts.pending} pending application{counts.pending === 1 ? "" : "s"}</span>
+        </article>
+        <article className={styles.summaryCard}>
+          <span className={styles.summaryLabel}>Won this month</span>
+          <strong className={styles.summaryValue}>{fmtAED(summary.won)}</strong>
+          <span className={styles.summaryHint}>{counts.accepted} accepted</span>
+        </article>
+        <article className={styles.summaryCard}>
+          <span className={styles.summaryLabel}>Response speed</span>
+          <strong className={styles.summaryValue}>
+            {summary.responseTime > 0 ? `${summary.responseTime}d` : "Fast"}
+          </strong>
+          <span className={styles.summaryHint}>Average since applied</span>
+        </article>
+      </div>
+
+      <div className={styles.requestBanner}>
+        <div className={styles.requestCopy}>
+          <span className={styles.requestEyebrow}>Need more opportunities?</span>
+          <p className={styles.requestTitle}>Post a job to attract providers or browse open roles.</p>
+        </div>
+        <button type="button" className={styles.requestButton} onClick={requestMoreWork}>
+          Create job request
+        </button>
+      </div>
+
       {/* Neutral tabs (no background colors) */}
       <div className={styles.tabs} role="tablist" aria-label="Application status">
         {TABS.map(t => (
@@ -224,6 +271,11 @@ export default function Applications() {
               <div className={styles.metaRow}>
                 <span className={styles.k}>Date & time</span>
                 <span className={styles.v}>{fmtRange(a.fromISO, a.toISO)}</span>
+              </div>
+
+              <div className={styles.metaRow}>
+                <span className={styles.k}>Applied</span>
+                <span className={styles.v}>{fmtAppliedAt(a.appliedAtISO)}</span>
               </div>
             </div>
 

@@ -1,0 +1,33 @@
+.wrapper { width: 70%; margin: 32px auto; display: grid; gap: 16px; }
+@media (max-width: 60em) { .wrapper { width: 95%; } }
+.card {
+  border-radius: 18px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: linear-gradient(120deg, #f6f7f5, #f5f6f2);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+  padding: 20px;
+}
+.h1 { margin: 0; font-size: clamp(20px, 3vw, 28px); font-weight: 900; }
+.sub { margin: 6px 0 0; opacity: .8; font-weight: 700; }
+
+.empty {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  border-radius: 16px;
+  border: 1px dashed rgba(0,0,0,0.12);
+  background: #fff;
+  padding: 28px 16px;
+  text-align: center;
+}
+.bigIcon { width: 40px; height: 40px; opacity: .75; }
+.title { font-weight: 900; font-size: 18px; }
+.desc { opacity: .8; font-weight: 700; }
+
+.row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.btn, .ghost {
+  padding: 10px 12px; border-radius: 12px; min-height: 40px; font-weight: 900; cursor: pointer; border: 0;
+}
+.btn { background: rgb(169,174,155); color: #fff; }
+.ghost { background: #fff; border: 2px solid rgba(0,0,0,0.08); }
+.info { border-radius: 12px; background: #fff; border: 1px solid rgba(0,0,0,0.08); padding: 12px; font-weight: 700; }

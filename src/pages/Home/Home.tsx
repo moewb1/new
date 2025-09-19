@@ -1,6 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import styles from "./Home.module.css";
 import { useNavigate } from "react-router-dom";
+import {
+  CONSUMER_JOBS_UPDATED_EVENT,
+  getConsumerJobsSummary,
+  type DemoJobSummary,
+} from "@/data/demoJobs";
+import { SERVICE_CATALOG, STATIC_PROVIDERS } from "../Providers/data";
 
 /* ------------------ Types ------------------ */
 type SavedLocation = { lat: number; lng: number; address?: string };
@@ -46,6 +52,14 @@ const FALLBACK_IMAGES: Record<string, string> = {
     "https://images.unsplash.com/photo-1544473244-f6895e69ad8b?q=80&w=1200&auto=format&fit=crop",
   driver:
     "https://images.unsplash.com/photo-1529078155058-5d716f45d604?q=80&w=1200&auto=format&fit=crop",
+  electrical:
+    "https://custom-images.strikinglycdn.com/res/hrscywv4p/image/upload/c_limit,fl_lossy,h_9000,w_1200,f_auto,q_auto/3767939/697466_425384.jpeg",
+  painting:
+    "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?q=80&w=1200&auto=format&fit=crop",
+  plumbing:
+    "https://www.icominc.com/wp-content/uploads/2021/08/TA9Q9bV3Z81nZRooviZz51Y4bpnXIdBt1623180634.jpg",
+  ac:
+    "https://www.moltocare.ae/wp-content/uploads/2022/06/best-AC-maintenance-company-in-Dubai.jpg",
   babysitting:
     "https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?q=80&w=1200&auto=format&fit=crop",
   chef:
@@ -328,6 +342,11 @@ function computeRating(category: string, nationalityCode: string, seedKey: strin
   return Math.round(val * 10) / 10;
 }
 
+function formatServiceRateAED(minor: number) {
+  const major = Math.max(0, minor) / 100;
+  return `AED ${major.toLocaleString("en-AE", { minimumFractionDigits: 0 })}/hr`;
+}
+
 /** Pick a name if none is stored */
 function getDisplayName(profile: Profile) {
   if (profile?.name) return profile.name;
@@ -336,7 +355,7 @@ function getDisplayName(profile: Profile) {
   const KEY = "profile.generatedName";
   const existing = localStorage.getItem(KEY);
   if (existing) return existing;
-  const pool = ["Alex","Maya","Rami","Luna","Omar","Layla","Zain","Mira","Sam","Yara","Adel","Nour","Khaled","Rita","Hadi"];
+  const pool = ["Alex","Maya","Rami","Luna","Omar","Layla","Zain","Mira","Sam","Moe","Adel","Nour","Khaled","Rita","Hadi"];
   const pick = pool[Math.floor(Math.random() * pool.length)];
   localStorage.setItem(KEY, pick);
   return pick;
@@ -352,6 +371,33 @@ export default function Home() {
   }, []);
   const role = profile?.role || null;
   const displayName = getDisplayName(profile);
+  const isConsumer = role === "consumer";
+
+  const [consumerJobs, setConsumerJobs] = useState<DemoJobSummary[]>(() => getConsumerJobsSummary());
+
+  useEffect(() => {
+    const refresh = () => setConsumerJobs(getConsumerJobsSummary());
+    refresh();
+    window.addEventListener(CONSUMER_JOBS_UPDATED_EVENT, refresh);
+    window.addEventListener("storage", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.removeEventListener(CONSUMER_JOBS_UPDATED_EVENT, refresh);
+      window.removeEventListener("storage", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, []);
+
+  const previewJobs = useMemo(() => consumerJobs.slice(0, 3), [consumerJobs]);
+  const serviceCatalog = useMemo(() => Object.values(SERVICE_CATALOG), []);
+  const serviceGroups = useMemo(
+    () =>
+      serviceCatalog.map((svc) => ({
+        info: svc,
+        providers: Object.values(STATIC_PROVIDERS).filter((p) => p.serviceIds.includes(svc.id)),
+      })),
+    [serviceCatalog]
+  );
 
   const location = useMemo<SavedLocation | null>(() => {
     try {
@@ -455,7 +501,7 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
       const fromLS = JSON.parse(localStorage.getItem("jobs") || "[]");
       if (Array.isArray(fromLS) && fromLS.length) return fromLS;
     } catch {}
-    return [
+    const seed: Job[] = [
       { id: "j1", title: "House Cleaners", category: "cleaning",  consumerName: "Rita S." },
       { id: "j2", title: "Barista for Morning Shift", category: "barista", consumerName: "Café Latté" },
       { id: "j3", title: "Event Hostess", category: "hostess",   consumerName: "Blue Events" },
@@ -463,6 +509,8 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
       { id: "j5", title: "Private Driver", category: "driver",    consumerName: "H. Mansour" },
       { id: "j6", title: "Babysitter (Weekend)", category: "babysitting", consumerName: "Family Haddad" },
     ];
+    try { localStorage.setItem("jobs", JSON.stringify(seed)); } catch {}
+    return seed;
   });
 
   // UI state
@@ -599,90 +647,233 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
         </div>
       </div>
 
-      {/* Categories */}
-      <div className={styles.centerRow}>
-        <div className={styles.catBar} role="tablist" aria-label="Categories">
-          <div className={styles.catScroller}>
-            {CATEGORIES.map((c) => {
-              const active = c.key === activeCategory;
+      {/* Consumer Add Job banner */}
+      {isConsumer && (
+        <div className={styles.addJobCta}>
+          <div className={styles.addJobCtaCopy}>
+            <span className={styles.addJobCtaEyebrow}>Need a hand?</span>
+            <h3 className={styles.addJobCtaTitle}>Post a job and get matched within minutes.</h3>
+            <p className={styles.addJobCtaBody}>
+              Share what you need done, choose the best offer, and stay in control from start to finish.
+            </p>
+          </div>
+          <button
+            className={styles.addJobCtaButton}
+            onClick={() => navigate("/jobs/post")}
+            aria-label="Post a job"
+          >
+            <Icon.Application className={styles.addJobCtaIcon} />
+            <span>Post a job</span>
+            <Icon.ChevronRight className={styles.addJobCtaArrow} />
+          </button>
+        </div>
+      )}
+
+      {/* Consumer "My Jobs" */}
+      {isConsumer && (
+        <div>
+          <div className={styles.jobsHeader}>
+            <h2 className={styles.h2}>My Jobs</h2>
+            <button
+              type="button"
+              className={styles.textLinkButton}
+              onClick={() => navigate("/my-jobs")}
+            >
+              <span>View all</span>
+              <Icon.ChevronRight className={styles.textLinkButtonIcon} />
+            </button>
+          </div>
+          <div style={{marginBottom:10}}></div>
+          <div className={styles.jobPreviewGrid}>
+            {consumerJobs.length === 0 ? (
+              <div className={styles.emptyState}>
+                <p>You haven't posted any jobs yet.</p>
+                <div style={{ height: 10 }} />
+                <button className={styles.primaryBtn} onClick={() => navigate("/jobs/post")}>Post your first job</button>
+              </div>
+            ) : (
+              previewJobs.map((job) => (
+                <article key={job.id} className={`${styles.jobCard} ${styles.jobPreviewCard}`}>
+                  <div className={`${styles.jobImgWrap} ${styles.jobPreviewImgWrap}`}>
+                    <img
+                      className={styles.jobImg}
+                      src={job.image || (FALLBACK_IMAGES as any)[job.category] || FALLBACK_IMAGES.default}
+                      alt=""
+                    />
+                    <div className={styles.jobCategory}>
+                      <CategoryIcon catKey={job.category} className={styles.badgeIcon} />
+                      {job.category}
+                    </div>
+                  </div>
+                  <div className={styles.jobBody}>
+                    <h3 className={styles.jobTitle}>{job.title}</h3>
+                    <p className={styles.jobMeta}>Posted {job.postedAt}</p>
+                  </div>
+                  <div className={styles.jobActions}>
+                    <button className={styles.secondaryBtn} onClick={() => navigate(`/jobs/${job.id}`)}>View</button>
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+      {isConsumer && serviceGroups.length > 0 && (
+        <div>
+          <div className={styles.jobsHeader}>
+            <h2 className={styles.h2}>Services</h2>
+          </div>
+          <div className={styles.serviceHighlightGrid}>
+            {serviceGroups.map(({ info, providers }) => {
+              const rate = formatServiceRateAED(info.hourlyRateMinor);
+              const topProviders = providers.slice(0, 3);
+              const remaining = Math.max(0, providers.length - topProviders.length);
+              const providerLabel = providers.length
+                ? `${providers.length} specialist${providers.length === 1 ? "" : "s"} nearby`
+                : "Be the first to book";
+              const imageSrc = info.image;
+
               return (
-                <button
-                  key={c.key}
-                  role="tab"
-                  aria-selected={active}
-                  className={`${styles.catChip} ${active ? styles.catChipActive : ""}`}
-                  onClick={() => setActiveCategory(c.key)}
-                >
-                  {c.key !== "all" && (
-                    <CategoryIcon catKey={c.key} className={styles.catIcon} />
-                  )}
-                  {c.label}
-                </button>
+                <article key={info.id} className={styles.serviceHighlightCard}>
+                  <div className={styles.serviceHighlightMedia}>
+                    <img
+                      src={imageSrc}
+                      alt=""
+                      loading="lazy"
+                      onError={(event) => {
+                        (event.target as HTMLImageElement).src = FALLBACK_IMAGES.default;
+                      }}
+                    />
+                    <span className={styles.serviceHighlightBadge}>Top pick</span>
+                  </div>
+
+                  <div className={styles.serviceHighlightBody}>
+                    <h3 className={styles.serviceHighlightTitle}>{info.title}</h3>
+                    <p className={styles.serviceHighlightDesc}>{info.description}</p>
+
+                    {providers.length > 0 && (
+                      <div className={styles.serviceHighlightProviders}>
+                        <div className={styles.serviceHighlightAvatars}>
+                          {topProviders.map((provider, index) => (
+                            <span
+                              key={provider.id}
+                              className={styles.serviceHighlightAvatar}
+                              style={{ zIndex: topProviders.length - index }}
+                            >
+                              <img src={provider.avatar} alt="" loading="lazy" />
+                            </span>
+                          ))}
+                          {remaining > 0 && (
+                            <span className={`${styles.serviceHighlightAvatar} ${styles.serviceHighlightAvatarMore}`}>
+                              +{remaining}
+                            </span>
+                          )}
+                        </div>
+                        <span className={styles.serviceHighlightProviderText}>{providerLabel}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className={styles.serviceHighlightFooter}>
+                    <span className={styles.serviceHighlightRate}>{rate}</span>
+                    <button
+                      type="button"
+                      className={styles.serviceHighlightButton}
+                      onClick={() => navigate(`/providers/${info.id}`)}
+                    >
+                      Browse providers
+                    </button>
+                  </div>
+                </article>
               );
             })}
           </div>
         </div>
-      </div>
-
-      {/* Jobs */}
-      <div className={styles.centerRow}>
-        <div className={styles.jobsHeader}>
-          <h2 className={styles.h2}>Latest Jobs <span className={styles.jobsCount}>
-            ({filteredJobs.length} result{filteredJobs.length !== 1 ? "s" : ""})
-          </span></h2>
-        </div>
-      </div>
-
-      <div className={`${styles.jobsGrid} ${styles.centeredGrid}`}>
-        {filteredJobs.map((job) => {
-          const fallback = FALLBACK_IMAGES[job.category] || FALLBACK_IMAGES.default;
-          const price = computePriceAED(job.category, nationalityCode, job.id);
-          const rating = computeRating(job.category, nationalityCode, job.id);
-          const label = CATEGORIES.find(c => c.key === job.category)?.label || job.category;
-
-          return (
-            <article key={job.id} className={styles.jobCard}>
-              <div className={styles.jobImgWrap}>
-                <img
-                  src={job.image || fallback}
-                  alt=""
-                  className={styles.jobImg}
-                  loading="lazy"
-                  onError={(e) => { (e.target as HTMLImageElement).src = fallback; }}
-                />
-                <span className={styles.jobCategory}>
-                  <CategoryIcon catKey={job.category} className={styles.badgeIcon} />
-                  {label}
-                </span>
-                <span className={styles.priceBadge}>AED {price}/hr</span>
+      )}
+      {!isConsumer && (
+        <>
+          <div className={styles.centerRow}>
+            <div className={styles.catBar} role="tablist" aria-label="Categories">
+              <div className={styles.catScroller}>
+                {CATEGORIES.map((c) => {
+                  const active = c.key === activeCategory;
+                  return (
+                    <button
+                      key={c.key}
+                      role="tab"
+                      aria-selected={active}
+                      className={`${styles.catChip} ${active ? styles.catChipActive : ""}`}
+                      onClick={() => setActiveCategory(c.key)}
+                    >
+                      {c.key !== "all" && (
+                        <CategoryIcon catKey={c.key} className={styles.catIcon} />
+                      )}
+                      {c.label}
+                    </button>
+                  );
+                })}
               </div>
-
-              <div className={styles.jobBody}>
-                <h3 className={styles.jobTitle}>{job.title}</h3>
-                <p className={styles.jobMeta}>by <b>{job.consumerName}</b></p>
-              </div>
-
-              <div className={styles.jobActions}>
-                {role === "provider" ? (
-                  <button className={styles.primaryBtn} onClick={() => navigate(`/jobs/${job.id}`)}>
-                    Apply
-                  </button>
-                ) : (
-                  <button className={styles.secondaryBtn} onClick={() => navigate(`/jobs/${job.id}`)}>
-                    View
-                  </button>
-                )}
-              </div>
-            </article>
-          );
-        })}
-
-        {filteredJobs.length === 0 && (
-          <div className={styles.emptyState}>
-            <p>No jobs match your filter.</p>
+            </div>
           </div>
-        )}
-      </div>
+
+          <div className={styles.centerRow}>
+            <div className={styles.jobsHeader}>
+              <h2 className={styles.h2}>Latest Jobs</h2>
+            </div>
+          </div>
+
+          <div className={`${styles.jobsGrid} ${styles.centeredGrid}`}>
+            {filteredJobs.map((job) => {
+              const fallback = FALLBACK_IMAGES[job.category] || FALLBACK_IMAGES.default;
+              const price = computePriceAED(job.category, nationalityCode, job.id);
+              const rating = computeRating(job.category, nationalityCode, job.id);
+              const label = CATEGORIES.find(c => c.key === job.category)?.label || job.category;
+
+              return (
+                <article key={job.id} className={styles.jobCard}>
+                  <div className={styles.jobImgWrap}>
+                    <img
+                      src={job.image || fallback}
+                      alt=""
+                      className={styles.jobImg}
+                      loading="lazy"
+                      onError={(e) => { (e.target as HTMLImageElement).src = fallback; }}
+                    />
+                    <span className={styles.jobCategory}>
+                      <CategoryIcon catKey={job.category} className={styles.badgeIcon} />
+                      {label}
+                    </span>
+                    <span className={styles.priceBadge}>AED {price}/hr</span>
+                  </div>
+
+                  <div className={styles.jobBody}>
+                    <h3 className={styles.jobTitle}>{job.title}</h3>
+                    <p className={styles.jobMeta}>by <b>{job.consumerName}</b></p>
+                  </div>
+
+                  <div className={styles.jobActions}>
+                    {role === "provider" ? (
+                      <button className={styles.primaryBtn} onClick={() => navigate(`/jobs/${job.id}`)}>
+                        Apply
+                      </button>
+                    ) : (
+                      <button className={styles.secondaryBtn} onClick={() => navigate(`/jobs/${job.id}`)}>
+                        View
+                      </button>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+
+            {filteredJobs.length === 0 && (
+              <div className={styles.emptyState}>
+                <p>No jobs match your filter.</p>
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {/* Profile Drawer */}
       {profileDrawerOpen && (
@@ -736,15 +927,26 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
                   </button>
                 )}
 
-                {/* Payouts */}
-                <button
-                  className={styles.listItem}
-                  onClick={() => { setProfileDrawerOpen(false); navigate("/profile/Payouts"); }}
-                >
-                  <span className={styles.listIcon}><Icon.ArrowDownCircle /></span>
-                  <span className={styles.listText}>Payouts</span>
-                  <Icon.ChevronRight className={styles.chev} />
-                </button>
+                {/* Consumer-only: Transactions; Provider: Payouts */}
+                {role === "consumer" ? (
+                  <button
+                    className={styles.listItem}
+                    onClick={() => { setProfileDrawerOpen(false); navigate("/profile/Transactions"); }}
+                  >
+                    <span className={styles.listIcon}><Icon.ArrowDownCircle /></span>
+                    <span className={styles.listText}>Transactions</span>
+                    <Icon.ChevronRight className={styles.chev} />
+                  </button>
+                ) : (
+                  <button
+                    className={styles.listItem}
+                    onClick={() => { setProfileDrawerOpen(false); navigate("/profile/Payouts"); }}
+                  >
+                    <span className={styles.listIcon}><Icon.ArrowDownCircle /></span>
+                    <span className={styles.listText}>Payouts</span>
+                    <Icon.ChevronRight className={styles.chev} />
+                  </button>
+                )}
 
                 {/* Privacy Policy */}
                 <button

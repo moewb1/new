@@ -10,6 +10,7 @@ const cx = (...list: Array<string | false | null | undefined>) =>
 export default function ForgetPassword() {
   const [search] = useSearchParams();
   const prefillEmail = search.get("email") ?? "";
+  const role = search.get("role");
 
   const navigate = useNavigate();
   const [email, setEmail] = React.useState(prefillEmail);
@@ -87,7 +88,7 @@ export default function ForgetPassword() {
 
       <p className={styles.foot}>
         Remembered it?{" "}
-        <Link to="/auth/login" className={styles.link}>Back to Log In</Link>
+        <Link to={`/auth/login${role ? `?role=${role}` : ""}`} className={styles.link}>Back to Log In</Link>
       </p>
     </section>
   );
