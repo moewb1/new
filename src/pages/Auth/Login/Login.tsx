@@ -12,6 +12,7 @@ export default function Login() {
 
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [role, setRole] = React.useState<"provider" | "consumer" | "">("");
 
   const [touchedEmail, setTouchedEmail] = React.useState(false);
   const [touchedPassword, setTouchedPassword] = React.useState(false);
@@ -37,7 +38,8 @@ export default function Login() {
 
     // 2FA step -> go to OTP
     sessionStorage.setItem("onboardingFlow", "login");
-    navigate(`/auth/otp?email=${encodeURIComponent(email)}&flow=login`);
+    const roleQS = role ? `&role=${role}` : "";
+    navigate(`/auth/otp?email=${encodeURIComponent(email)}&flow=login${roleQS}`);
   };
 
   return (
@@ -56,6 +58,30 @@ export default function Login() {
       </div>
 
       <form className={styles.box} onSubmit={onSubmit} noValidate>
+        {/* Optional role selection for login */}
+        <div style={{ display: 'grid', gap: 8 }}>
+          <div style={{ fontWeight: 800, opacity: .85 }}>Log in as</div>
+          <div className={styles.segment} role="tablist" aria-label="Login role">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={role === 'provider'}
+              className={`${styles.segBtn} ${role === 'provider' ? styles.segActive : ''}`}
+              onClick={() => setRole(role === 'provider' ? '' : 'provider')}
+            >
+              Provider
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={role === 'consumer'}
+              className={`${styles.segBtn} ${role === 'consumer' ? styles.segActive : ''}`}
+              onClick={() => setRole(role === 'consumer' ? '' : 'consumer')}
+            >
+              Consumer
+            </button>
+          </div>
+        </div>
         <label className={`${styles.inputWrap} ${showEmailError ? styles.inputError : ""}`}>
           <input
             className={styles.input}
@@ -127,6 +153,39 @@ export default function Login() {
           </button>
           <button type="button" className={styles.socialBtn} aria-label="Log In With Google">
             <img src={googleLogo} alt="Google" className={styles.logo} />
+          </button>
+        </div>
+      </div>
+
+      {/* Quick static login (provider / consumer) */}
+      <div className={styles.socialBlock}>
+        <div className={styles.socialTitle}>Quick Login (Demo)</div>
+        <div className={styles.socialRow}>
+          <button
+            type="button"
+            className={styles.socialBtn}
+            onClick={() => {
+              localStorage.setItem("auth", JSON.stringify({ authenticated: true }));
+              const p = JSON.parse(localStorage.getItem("profile") || "{}") || {};
+              p.role = "provider";
+              localStorage.setItem("profile", JSON.stringify(p));
+              navigate("/home");
+            }}
+          >
+            Provider
+          </button>
+          <button
+            type="button"
+            className={styles.socialBtn}
+            onClick={() => {
+              localStorage.setItem("auth", JSON.stringify({ authenticated: true }));
+              const p = JSON.parse(localStorage.getItem("profile") || "{}") || {};
+              p.role = "consumer";
+              localStorage.setItem("profile", JSON.stringify(p));
+              navigate("/home");
+            }}
+          >
+            Consumer
           </button>
         </div>
       </div>

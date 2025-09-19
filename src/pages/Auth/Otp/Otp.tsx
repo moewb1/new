@@ -52,6 +52,7 @@ export default function Otp() {
     }
   
     if (flow === "signup") {
+      // After OTP, continue onboarding starting with location
       navigate("/auth/LocationOnboarding");
     } else {
       navigate("/home");
