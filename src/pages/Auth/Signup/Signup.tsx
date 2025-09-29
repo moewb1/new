@@ -2,6 +2,7 @@ import React from "react";
 import styles from "./Signup.module.css";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import colors from "@/styles/colors";
+import { startGuestSession } from "@/utils/auth";
 
 /* your assets */
 import appleLogo from "@/assets/Apple_logo.svg";
@@ -45,6 +46,16 @@ export default function Signup() {
   const showPassErr  = (tPass   || submitted) && !isValidPass;
 
   const isFormValid = isValidFirst && isValidLast && isValidEmail && isValidPass;
+
+  const handleGuest = React.useCallback(() => {
+    if (role !== "consumer") return;
+    try {
+      localStorage.removeItem("profile");
+      localStorage.removeItem("location");
+    } catch {}
+    startGuestSession("consumer");
+    navigate("/home", { replace: true });
+  }, [navigate, role]);
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -176,6 +187,15 @@ export default function Signup() {
           </button>
         </div>
       </div>
+
+      {role === "consumer" ? (
+        <div className={styles.guestBlock}>
+          <p className={styles.guestNote}>Just browsing? Continue as a guest.</p>
+          <button type="button" className={styles.guestBtn} onClick={handleGuest}>
+            Continue as Guest
+          </button>
+        </div>
+      ) : null}
 
       <p className={styles.foot}>
         Already have an Account?{" "}

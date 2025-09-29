@@ -18,6 +18,9 @@ import {
   listCountryMeta,
   type CreateJobInput,
 } from "@/data/demoJobs";
+import AuthGateModal from "@/components/AuthGateModal/AuthGateModal";
+import { useAuthState } from "@/hooks/useAuthState";
+import { isGuestConsumer } from "@/utils/auth";
 
 import markerIcon2xUrl from "leaflet/dist/images/marker-icon-2x.png";
 import markerIconUrl from "leaflet/dist/images/marker-icon.png";
@@ -246,6 +249,8 @@ function daysInRange(startISO: string, endISO: string): string[] {
 
 export default function PostJob() {
   const navigate = useNavigate();
+  const auth = useAuthState();
+  const guestConsumer = isGuestConsumer(auth);
   const portalTarget = typeof document !== "undefined" ? document.body : undefined;
   const todayISO = useMemo(() => formatYYYYMMDDLocal(new Date()), []);
 
@@ -286,6 +291,7 @@ export default function PostJob() {
   const [preferredLanguages, setPreferredLanguages] = useState<Option[]>([]);
   const [serviceRows, setServiceRows] = useState<ServiceRow[]>([makeServiceRow()]);
   const [submitted, setSubmitted] = useState(false);
+  const [guestPromptOpen, setGuestPromptOpen] = useState(false);
   const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
@@ -514,6 +520,10 @@ export default function PostJob() {
 
   const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (guestConsumer) {
+      setGuestPromptOpen(true);
+      return;
+    }
     setSubmitted(true);
     if (!canSubmit()) return;
 
@@ -1105,11 +1115,19 @@ export default function PostJob() {
         </div>
 
         <div className={styles.actionRow}>
-          <button className={styles.primaryBtn} type="submit" disabled={submitted && !canSubmit()}>
-            Post Job
-          </button>
-        </div>
-      </form>
+      <button className={styles.primaryBtn} type="submit" disabled={submitted && !canSubmit()}>
+        Post Job
+      </button>
+    </div>
+  </form>
+
+      <AuthGateModal
+        open={guestPromptOpen}
+        onClose={() => setGuestPromptOpen(false)}
+        role="consumer"
+        title="Sign in to post a job"
+        message="Log in or create a free account to publish job requests."
+      />
     </section>
   );
 }

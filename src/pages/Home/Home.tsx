@@ -8,12 +8,15 @@ import {
 } from "@/data/demoJobs";
 import { SERVICE_CATALOG, STATIC_PROVIDERS } from "../Providers/data";
 import ContactUsModal from "@/components/ContactUsModal/ContactUsModal";
+import AuthGateModal from "@/components/AuthGateModal/AuthGateModal";
 import {
   CONTACT_EMAIL,
   CONTACT_PHONE_DISPLAY,
   CONTACT_WHATSAPP_URL,
 } from "@/constants/contact";
 import { GmailIcon, WhatsAppIcon } from "@/components/icons/ContactIcons";
+import { useAuthState } from "@/hooks/useAuthState";
+import { isGuestConsumer } from "@/utils/auth";
 
 /* ------------------ Types ------------------ */
 type SavedLocation = { lat: number; lng: number; address?: string };
@@ -383,19 +386,24 @@ function getDisplayName(profile: Profile) {
 /* ------------------ Component ------------------ */
 export default function Home() {
   const navigate = useNavigate();
+  const auth = useAuthState();
+  const guestConsumer = isGuestConsumer(auth);
 
   const profile = useMemo<Profile>(() => {
     try { return JSON.parse(localStorage.getItem("profile") || "{}") as Profile; }
     catch { return {}; }
   }, []);
-  const role = profile?.role || null;
-  const displayName = getDisplayName(profile);
-  const profilePhoto = profile?.profilePhoto || null;
-  const fullBodyPhoto = profile?.fullBodyPhoto || null;
-  const galleryPhotos = Array.isArray(profile?.galleryPhotos) ? profile.galleryPhotos || [] : [];
-  const preferredLanguage = profile?.preferredLanguage || "";
+  const role = auth.role ?? profile?.role ?? null;
+  const displayName = guestConsumer ? "Guest" : getDisplayName(profile);
+  const profilePhoto = guestConsumer ? null : profile?.profilePhoto || null;
+  const fullBodyPhoto = guestConsumer ? null : profile?.fullBodyPhoto || null;
+  const galleryPhotos = guestConsumer
+    ? []
+    : Array.isArray(profile?.galleryPhotos) ? profile.galleryPhotos || [] : [];
+  const preferredLanguage = guestConsumer ? "" : profile?.preferredLanguage || "";
   const isProvider = role === "provider";
   const isConsumer = role === "consumer";
+  const roleBadgeLabel = guestConsumer ? "Guest" : role;
 
   const [consumerJobs, setConsumerJobs] = useState<DemoJobSummary[]>(() => getConsumerJobsSummary());
 
@@ -540,9 +548,17 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
   // UI state
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [guestPromptOpen, setGuestPromptOpen] = useState(false);
   const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState(0);
+
+  useEffect(() => {
+    if (guestConsumer) {
+      setProfileDrawerOpen(false);
+      setNotifDrawerOpen(false);
+    }
+  }, [guestConsumer]);
 
   // Live filtering (instant)
   const filteredJobs = useMemo(() => {
@@ -581,7 +597,13 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
     []
   );
 
-  const goQuick = (path: string) => navigate(path);
+  const goQuick = (path: string) => {
+    if (guestConsumer) {
+      setGuestPromptOpen(true);
+      return;
+    }
+    navigate(path);
+  };
   const openContact = () => setContactModalOpen(true);
   const closeContact = () => setContactModalOpen(false);
 
@@ -625,37 +647,49 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
             <div className={styles.greetingLine}>
               <span className={styles.greeting}>{greeting},</span>
               <span className={styles.name}>{displayName}</span>
-              {role ? <span className={styles.roleBadge}>{role}</span> : null}
+              {roleBadgeLabel ? <span className={styles.roleBadge}>{roleBadgeLabel}</span> : null}
             </div>
 
-            <button
-              className={styles.locationPill}
-              onClick={() => navigate("/profile/location")}
-              title={location?.address ? location.address : "Set location"}
-            >
-              <Icon.Location className={styles.locIcon} />
-              <span className={styles.locationText}>
-                {location?.address || "Set your location"}
-              </span>
-            </button>
+            {guestConsumer ? (
+              <div className={styles.guestInfoPill}>Guest mode • Sign in to add your location</div>
+            ) : (
+              <button
+                className={styles.locationPill}
+                onClick={() => navigate("/profile/location")}
+                title={location?.address ? location.address : "Set location"}
+              >
+                <Icon.Location className={styles.locIcon} />
+                <span className={styles.locationText}>
+                  {location?.address || "Set your location"}
+                </span>
+              </button>
+            )}
           </div>
 
           <div className={styles.headerButtons}>
-            <button
-              className={styles.bellBtn}
-              onClick={() => setNotifDrawerOpen(true)}
-              aria-label="Open notifications"
-              title="Notifications"
-            >
-              <Icon.Bell className={styles.bellIcon} />
-              {unread > 0 && <span className={styles.unreadDot} aria-hidden="true" />}
-            </button>
+            {!guestConsumer ? (
+              <button
+                className={styles.bellBtn}
+                onClick={() => setNotifDrawerOpen(true)}
+                aria-label="Open notifications"
+                title="Notifications"
+              >
+                <Icon.Bell className={styles.bellIcon} />
+                {unread > 0 && <span className={styles.unreadDot} aria-hidden="true" />}
+              </button>
+            ) : null}
 
             <button
               className={styles.avatarBtn}
-              aria-label="Open profile"
-              onClick={() => setProfileDrawerOpen(true)}
-              title="Profile"
+              aria-label={guestConsumer ? "Sign in to manage your profile" : "Open profile"}
+              onClick={() => {
+                if (guestConsumer) {
+                  setGuestPromptOpen(true);
+                  return;
+                }
+                setProfileDrawerOpen(true);
+              }}
+              title={guestConsumer ? "Sign in to manage your profile" : "Profile"}
             >
               {profilePhoto ? (
                 <img src={profilePhoto} alt="Profile" className={styles.avatarPhoto} />
@@ -1297,6 +1331,14 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
       </aside>
     </>
   )}
+
+      <AuthGateModal
+        open={guestPromptOpen}
+        onClose={() => setGuestPromptOpen(false)}
+        role="consumer"
+        title="Sign in to access your profile"
+        message="Log in or create a free account to manage your profile and settings."
+      />
 
       <ContactUsModal open={contactModalOpen} onClose={closeContact} />
 

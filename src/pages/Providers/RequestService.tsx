@@ -6,6 +6,9 @@ import {
   STATIC_PROVIDERS,
   PROVIDER_AVAILABILITY,
 } from "./data";
+import AuthGateModal from "@/components/AuthGateModal/AuthGateModal";
+import { useAuthState } from "@/hooks/useAuthState";
+import { isGuestConsumer } from "@/utils/auth";
 
 function formatHoursLabel(hours: number) {
   if (!Number.isFinite(hours) || hours <= 0) return "--";
@@ -231,6 +234,8 @@ export default function RequestService() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const provider = id ? STATIC_PROVIDERS[id] : undefined;
+  const auth = useAuthState();
+  const guestConsumer = isGuestConsumer(auth);
 
   const providerPreferredLanguages = useMemo(() => {
     if (!provider?.preferredLanguage) return [] as string[];
@@ -264,6 +269,7 @@ export default function RequestService() {
   const [dayConfigs, setDayConfigs] = useState<Record<string, DayConfig>>({});
   const [notes, setNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [guestPromptOpen, setGuestPromptOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [success, setSuccess] = useState<StoredRequest | null>(null);
 
@@ -540,6 +546,10 @@ export default function RequestService() {
 
   const onSubmit = (event: React.FormEvent) => {
     event.preventDefault();
+    if (guestConsumer) {
+      setGuestPromptOpen(true);
+      return;
+    }
     setSubmitted(true);
     if (success) {
       setSuccess(null);
@@ -927,6 +937,14 @@ export default function RequestService() {
           </div>
         </form>
       )}
+
+      <AuthGateModal
+        open={guestPromptOpen}
+        onClose={() => setGuestPromptOpen(false)}
+        role="consumer"
+        title="Sign in to request a provider"
+        message="Log in or create a free account to send service requests."
+      />
     </section>
   );
 }

@@ -124,6 +124,17 @@
 .locationPill:hover { transform: translateY(-1px); box-shadow: 0 14px 34px rgba(0,0,0,0.12); border-color: rgba(0,0,0,0.12); }
 .locIcon { width: 18px; height: 18px; fill: var(--ink); opacity: 0.9; }
 .locationText { max-width: 72vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.guestInfoPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 2px dashed rgba(17, 24, 39, 0.24);
+  color: #111827;
+  font-weight: 800;
+}
 
 /* Buttons in header */
 .bellBtn, .avatarBtn {

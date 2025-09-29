@@ -2,6 +2,7 @@ import React from "react";
 import styles from "./Login.module.css";
 import { Link, useNavigate, useSearchParams, createSearchParams } from "react-router-dom";
 import colors from "@/styles/colors";
+import { startGuestSession } from "@/utils/auth";
 
 /* reuse the same assets you added for signup */
 import appleLogo from "@/assets/Apple_logo.svg";
@@ -52,6 +53,16 @@ export default function Login() {
     if (role) params.role = role;
     navigate(`/auth/otp?${createSearchParams(params).toString()}`);
   };
+
+  const handleGuest = React.useCallback(() => {
+    if (role !== "consumer") return;
+    try {
+      localStorage.removeItem("profile");
+      localStorage.removeItem("location");
+    } catch {}
+    startGuestSession("consumer");
+    navigate("/home", { replace: true });
+  }, [navigate, role]);
 
   return (
     <section className={styles.wrapper}>
@@ -151,6 +162,15 @@ export default function Login() {
           </button>
         </div>
       </div>
+
+      {role === "consumer" ? (
+        <div className={styles.guestBlock}>
+          <p className={styles.guestNote}>Just browsing? Continue as a guest.</p>
+          <button type="button" className={styles.guestBtn} onClick={handleGuest}>
+            Continue as Guest
+          </button>
+        </div>
+      ) : null}
 
       {/* Quick static login (provider / consumer) */}
       {/* Removed Quick Login (Demo) buttons to avoid static role shortcuts */}
