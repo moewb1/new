@@ -36,6 +36,8 @@
 }
 .row{ display:grid; gap:8px; }
 .label{ font-weight:900; }
+.hint{ margin:0; font-weight:600; opacity:.75; }
+.hintSmall{ font-size:12px; font-weight:700; opacity:.7; }
 .input{
   width:100%; padding:12px; border:2px solid rgba(0,0,0,.08); border-radius:14px;
   background:#fff; font-weight:600; font-size:16px; min-height:44px; outline:none;
@@ -45,6 +47,40 @@
 .input:focus{ border-color: var(--accent); box-shadow:0 0 0 3px rgba(169,174,155,.18); transform: translateY(-1px); }
 .inputError{ border-color: rgba(198,40,40,.5)!important; box-shadow:0 0 0 3px rgba(198,40,40,.12)!important; }
 .error{ margin:0; color:#c62828; font-weight:800; }
+
+.mediaRow{ display:flex; flex-wrap:wrap; gap:12px; align-items:flex-start; }
+.photoPreview{
+  width:80px; height:80px; border-radius:14px; object-fit:cover;
+  border:2px solid rgba(0,0,0,.08); box-shadow:0 2px 6px rgba(0,0,0,.08);
+}
+.photoPlaceholder{
+  width:80px; height:80px; border-radius:14px; display:grid; place-items:center;
+  background:#e2e8f0; color:#475569; font-weight:700; border:2px dashed rgba(71,85,105,.45);
+  font-size:12px; text-align:center; padding:6px;
+}
+.mediaActions{ display:grid; gap:8px; align-items:flex-start; }
+.uploadBtn{
+  display:inline-flex; align-items:center; justify-content:center;
+  padding:10px 14px; border-radius:12px; border:2px solid rgba(0,0,0,.08);
+  background:#fff; font-weight:800; cursor:pointer;
+  transition:border-color 140ms ease, box-shadow 140ms ease;
+}
+.uploadBtn:hover{ border-color:rgba(0,0,0,.2); box-shadow:0 6px 18px rgba(0,0,0,.1); }
+.fileInput{ display:none; }
+.linkAction{
+  background:none; border:0; color:var(--accent); font-weight:800; cursor:pointer; padding:0;
+}
+.linkAction:hover{ text-decoration:underline; }
+.galleryWrap{ flex:1; min-width:0; }
+.galleryGrid{ display:flex; flex-wrap:wrap; gap:10px; }
+.galleryItem{ position:relative; width:80px; height:80px; border-radius:14px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.08); }
+.galleryImg{ width:100%; height:100%; object-fit:cover; }
+.galleryRemove{
+  position:absolute; top:4px; right:4px; width:22px; height:22px; border-radius:999px;
+  border:0; background:rgba(0,0,0,.65); color:#fff; font-weight:900; cursor:pointer;
+  line-height:20px; display:flex; align-items:center; justify-content:center;
+}
+.galleryRemove:hover{ background:rgba(0,0,0,.85); }
 
 .actions{ display:flex; gap:10px; justify-content:flex-end; }
 .primary,.secondary{
@@ -69,6 +105,8 @@
 .profileMeta{ display:grid; gap:4px; }
 .profileName{ font-weight:900; }
 .profileRow{ font-weight:700; opacity:.8; }
+
+.avatar img{ width:100%; height:100%; object-fit:cover; border-radius:inherit; }
 
 /* Layout stacks earlier for narrow screens */
 @media (max-width: 860px){

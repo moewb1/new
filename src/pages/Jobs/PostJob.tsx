@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Select, {
   components,
@@ -34,6 +34,13 @@ type CountryMeta = ReturnType<typeof listCountryMeta>[number];
 
 type Option = { value: string; label: string };
 
+type DaySlot = {
+  date: string;       // YYYY-MM-DD
+  startTime: string;  // HH:mm
+  endTime: string;    // HH:mm
+  custom?: boolean;   // user changed time or date manually
+};
+
 type ServiceRow = {
   key: string;
   serviceId: string;
@@ -57,7 +64,20 @@ const SERVICE_OPTIONS: ServiceOption[] = [
 const COUNTRY_META = listCountryMeta();
 const COUNTRY_OPTIONS: Option[] = COUNTRY_META.map((c) => ({ value: c.code, label: c.name }));
 
+const LANGUAGE_OPTIONS: Option[] = [
+  { value: "Arabic", label: "Arabic" },
+  { value: "English", label: "English" },
+  { value: "French", label: "French" },
+  { value: "Hindi", label: "Hindi" },
+  { value: "Malayalam", label: "Malayalam" },
+  { value: "Tagalog", label: "Tagalog" },
+  { value: "Urdu", label: "Urdu" },
+];
+
 const defaultCoords = { latitude: 25.2048, longitude: 55.2708 };
+
+const DEFAULT_START_TIME = "09:00";
+const DEFAULT_END_TIME = "17:00";
 
 const makeServiceRow = (): ServiceRow => ({
   key: `svc-${Math.random().toString(36).slice(2, 10)}`,
@@ -78,7 +98,7 @@ if (iconUrlsReady && !leafletIconReady) {
     shadowSize: [41, 41],
     popupAnchor: [1, -34],
   });
-  L.Marker.prototype.options.icon = icon;
+  (L.Marker.prototype as any).options.icon = icon;
   leafletIconReady = true;
 }
 
@@ -134,6 +154,11 @@ const multiSelectBase: StylesConfig<Option, true> = {
   multiValueRemove: (base) => ({ ...base, display: "none" }),
 };
 
+const languageSelectStyles: StylesConfig<Option, true> = {
+  ...multiSelectBase,
+  multiValueRemove: (base) => ({ ...base, display: "flex" }),
+};
+
 type LocationMarkerProps = {
   position: { lat: number; lng: number };
   onSelect: (lat: number, lng: number) => void;
@@ -162,10 +187,69 @@ function parseLinkCoords(link: string): { lat: number; lng: number } | null {
   return null;
 }
 
+const toTimeLabel = (value: string) => {
+  const [hours, minutes] = value.split(":").map((part) => Number(part));
+  const date = new Date();
+  date.setHours(hours || 0, minutes || 0, 0, 0);
+  return date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+};
+
+/** ---------- Local-date helpers to avoid UTC off-by-one ---------- */
+function formatYYYYMMDDLocal(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function addDaysISO(baseISO: string, delta: number) {
+  // local-time add (no timezone shift)
+  const d = new Date(`${baseISO}T00:00:00`);
+  d.setHours(12, 0, 0, 0); // stabilize around noon
+  d.setDate(d.getDate() + delta);
+  return formatYYYYMMDDLocal(d);
+}
+
+function compareISODate(a: string, b: string) {
+  const left = new Date(`${a}T00:00:00`);
+  const right = new Date(`${b}T00:00:00`);
+  left.setHours(12, 0, 0, 0);
+  right.setHours(12, 0, 0, 0);
+  const diff = left.getTime() - right.getTime();
+  if (diff === 0) return 0;
+  return diff > 0 ? 1 : -1;
+}
+
+function daysInRange(startISO: string, endISO: string): string[] {
+  if (!startISO || !endISO) return [];
+  const start = new Date(`${startISO}T00:00:00`);
+  const end = new Date(`${endISO}T00:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return [];
+
+  // stabilize both at noon to avoid DST/UTC off-by-one
+  const dir = start <= end ? 1 : -1;
+  const out: string[] = [];
+
+  const cur = new Date(start);
+  cur.setHours(12, 0, 0, 0);
+
+  const endNoon = new Date(end);
+  endNoon.setHours(12, 0, 0, 0);
+
+  while ((dir === 1 && cur.getTime() <= endNoon.getTime()) ||
+         (dir === -1 && cur.getTime() >= endNoon.getTime())) {
+    out.push(formatYYYYMMDDLocal(cur));
+    cur.setDate(cur.getDate() + dir);
+  }
+  return dir === 1 ? out : out.reverse();
+}
+
 export default function PostJob() {
   const navigate = useNavigate();
   const portalTarget = typeof document !== "undefined" ? document.body : undefined;
+  const todayISO = useMemo(() => formatYYYYMMDDLocal(new Date()), []);
 
+  // Basics
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [imageData, setImageData] = useState<string | undefined>();
@@ -181,8 +265,25 @@ export default function PostJob() {
   });
   const [locationLink, setLocationLink] = useState("");
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [start, setStart] = useState("");
-  const [end, setEnd] = useState("");
+
+  // Range-based scheduling
+  const [rangeStartDate, setRangeStartDate] = useState(todayISO);
+  const [rangeEndDate, setRangeEndDate] = useState(todayISO);
+  const [baseStartTime, setBaseStartTime] = useState(DEFAULT_START_TIME);
+  const [baseEndTime, setBaseEndTime] = useState(DEFAULT_END_TIME);
+
+  // keep per-day slots + preserve custom edits by date
+  const [daySlots, setDaySlots] = useState<DaySlot[]>([
+    { date: todayISO, startTime: DEFAULT_START_TIME, endTime: DEFAULT_END_TIME, custom: false },
+  ]);
+
+  // dates excluded from the current range
+  const [excludedDates, setExcludedDates] = useState<Set<string>>(new Set());
+
+  // map of custom-edited slots keyed by date to preserve across range changes
+  const [customSlots, setCustomSlots] = useState<Map<string, DaySlot>>(new Map());
+
+  const [preferredLanguages, setPreferredLanguages] = useState<Option[]>([]);
   const [serviceRows, setServiceRows] = useState<ServiceRow[]>([makeServiceRow()]);
   const [submitted, setSubmitted] = useState(false);
   const [mapReady, setMapReady] = useState(false);
@@ -192,6 +293,127 @@ export default function PostJob() {
       setMapReady(true);
     }
   }, []);
+
+  // Base slot factory for a given date
+  const makeBaseSlotForDate = useCallback(
+    (dateISO: string): DaySlot => ({
+      date: dateISO,
+      startTime: baseStartTime,
+      endTime: baseEndTime,
+      custom: false,
+    }),
+    [baseStartTime, baseEndTime]
+  );
+
+  // Ensure start/end boundaries are never excluded
+  useEffect(() => {
+    setExcludedDates((prev) => {
+      const next = new Set(prev);
+      next.delete(rangeStartDate);
+      next.delete(rangeEndDate);
+      return next;
+    });
+  }, [rangeStartDate, rangeEndDate]);
+
+  // Recompute daySlots whenever range / times / exclusions change
+  useEffect(() => {
+    const allDates = daysInRange(rangeStartDate, rangeEndDate);
+    const next: DaySlot[] = [];
+
+    for (const dateISO of allDates) {
+      if (excludedDates.has(dateISO)) continue;
+
+      const custom = customSlots.get(dateISO);
+      if (custom) {
+        next.push({ ...custom, date: dateISO, custom: true });
+      } else {
+        next.push(makeBaseSlotForDate(dateISO));
+      }
+    }
+    setDaySlots(next);
+  }, [rangeStartDate, rangeEndDate, baseStartTime, baseEndTime, excludedDates, customSlots, makeBaseSlotForDate]);
+
+  // Handle change on a visible day card (by index)
+  const handleDaySlotChange = (index: number, field: keyof DaySlot, value: string) => {
+    setDaySlots((prev) => {
+      const copy = [...prev];
+      const target = copy[index];
+      if (!target) return prev;
+      const updated: DaySlot = { ...target, [field]: value, custom: true };
+
+      setCustomSlots((map) => {
+        const next = new Map(map);
+        next.set(updated.date, updated);
+        return next;
+      });
+
+      copy[index] = updated;
+      return copy;
+    });
+  };
+
+  // Reset one day back to base (and clear its custom record)
+  const resetDaySlot = (index: number) => {
+    setDaySlots((prev) => {
+      const copy = [...prev];
+      const target = copy[index];
+      if (!target) return prev;
+
+      const base = makeBaseSlotForDate(target.date);
+      copy[index] = base;
+
+      setCustomSlots((map) => {
+        const next = new Map(map);
+        next.delete(target.date);
+        return next;
+      });
+
+      return copy;
+    });
+  };
+
+  // Exclude a day from the range (hide its card) – but never boundaries
+  const excludeDay = (dateISO: string) => {
+    if (dateISO === rangeStartDate || dateISO === rangeEndDate) return;
+    setExcludedDates((s) => new Set([...s, dateISO]));
+  };
+
+  // Restore an excluded day
+  const restoreDay = (dateISO: string) => {
+    setExcludedDates((s) => {
+      const next = new Set(s);
+      next.delete(dateISO);
+      return next;
+    });
+  };
+
+  // Ensure end date is within [start .. start+6] and not before start
+  const onChangeStartDate = (raw: string) => {
+    const nextValue = raw || todayISO;
+    const startDateObj = new Date(`${nextValue}T00:00:00`);
+    startDateObj.setHours(12, 0, 0, 0);
+    const normalized = formatYYYYMMDDLocal(startDateObj);
+    setRangeStartDate(normalized);
+    const maxEnd = addDaysISO(normalized, 6); // max 7 days inclusive
+    setRangeEndDate((prev) => {
+      const previous = prev || normalized;
+      if (compareISODate(previous, normalized) < 0) return normalized;
+      if (compareISODate(previous, maxEnd) > 0) return maxEnd;
+      return previous;
+    });
+  };
+
+  const onChangeEndDate = (raw: string) => {
+    const nextValue = raw || rangeStartDate;
+    const clampedMax = addDaysISO(rangeStartDate, 6);
+    if (compareISODate(nextValue, rangeStartDate) < 0) {
+      setRangeEndDate(rangeStartDate);
+    } else if (compareISODate(nextValue, clampedMax) > 0) {
+      setRangeEndDate(clampedMax);
+    } else {
+      setRangeEndDate(nextValue);
+    }
+  };
 
   const serviceOptionMap = useMemo(() => {
     const map = new Map<string, ServiceOption>();
@@ -244,24 +466,80 @@ export default function PostJob() {
     return firstRow ? serviceOptionMap.get(firstRow.serviceId)!.category : "cleaning";
   }, [serviceRows, serviceOptionMap]);
 
+  const languagesValid = preferredLanguages.length > 0;
+  const baseTimesValid = baseStartTime < baseEndTime;
+  const slotsValid =
+    daySlots.length > 0 &&
+    daySlots.length <= 7 && // defensive: never more than 7 visible days
+    daySlots.every((slot) => {
+      if (!slot.date || !slot.startTime || !slot.endTime) return false;
+      const startStamp = Date.parse(`${slot.date}T${slot.startTime}`);
+      const endStamp = Date.parse(`${slot.date}T${slot.endTime}`);
+      if (!Number.isFinite(startStamp) || !Number.isFinite(endStamp)) return false;
+      return endStamp > startStamp;
+    });
+
+  const endDateSummary = useMemo(() => {
+    if (!daySlots.length) return "";
+    const sorted = [...daySlots].sort((a, b) => a.date.localeCompare(b.date));
+    const last = sorted[sorted.length - 1];
+    const formatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" });
+    const dateLabel = formatter.format(new Date(`${last.date}T00:00:00`));
+    return `${dateLabel} • ${toTimeLabel(last.startTime)} – ${toTimeLabel(last.endTime)}`;
+  }, [daySlots]);
+
   const canSubmit = () => {
     const titleValid = title.trim().length >= 4;
     const descValid = description.trim().length >= 12;
     const locationValid = line1.trim().length > 0 && city.trim().length > 0 && state.trim().length > 0;
-    const scheduleValid = Boolean(start) && Boolean(end) && new Date(start) < new Date(end || start);
     const servicesValid =
       serviceRows.length > 0 &&
       serviceRows.every((row) => {
         const opt = serviceOptionMap.get(row.serviceId);
         return Boolean(opt) && parseProviders(row.providers) > 0 && row.allowedCountries.length > 0;
       });
-    return titleValid && descValid && locationValid && scheduleValid && servicesValid;
+    const rangeValid =
+      new Date(`${rangeStartDate}T00:00:00`) <= new Date(`${rangeEndDate}T00:00:00`);
+    return (
+      titleValid &&
+      descValid &&
+      locationValid &&
+      languagesValid &&
+      baseTimesValid &&
+      slotsValid &&
+      servicesValid &&
+      rangeValid
+    );
   };
 
   const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSubmitted(true);
     if (!canSubmit()) return;
+
+    const scheduleDaysPayload = daySlots
+      .map((slot) => ({
+        dateISO: slot.date,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+      }))
+      .sort((a, b) => {
+        const dateCompare = a.dateISO.localeCompare(b.dateISO);
+        if (dateCompare !== 0) return dateCompare;
+        return a.startTime.localeCompare(b.startTime);
+      });
+
+    const startMs = scheduleDaysPayload
+      .map((slot) => Date.parse(`${slot.dateISO}T${slot.startTime}`))
+      .filter((value) => Number.isFinite(value));
+    const endMs = scheduleDaysPayload
+      .map((slot) => Date.parse(`${slot.dateISO}T${slot.endTime}`))
+      .filter((value) => Number.isFinite(value));
+
+    const earliestStart = startMs.length ? Math.min(...startMs) : Date.now();
+    const latestEnd = endMs.length ? Math.max(...endMs) : earliestStart + 60 * 60000;
+    const scheduleFromISO = new Date(earliestStart).toISOString();
+    const scheduleToISO = new Date(Math.max(latestEnd, earliestStart + 60 * 60000)).toISOString();
 
     const services: CreateJobInput["services"] = serviceRows.map((row, index) => {
       const option = serviceOptionMap.get(row.serviceId)!;
@@ -275,15 +553,19 @@ export default function PostJob() {
       };
     });
 
+    const preferredLanguageValues = preferredLanguages.map((opt) => opt.value);
+
     const payload: CreateJobInput = {
       title: title.trim(),
       description: description.trim(),
       category,
       image: imageData,
       schedule: {
-        fromISO: new Date(start).toISOString(),
-        toISO: new Date(end).toISOString(),
+        fromISO: scheduleFromISO,
+        toISO: scheduleToISO,
       },
+      scheduleDays: scheduleDaysPayload,
+      preferredLanguages: preferredLanguageValues,
       address: {
         line1: line1.trim(),
         city: city.trim(),
@@ -324,6 +606,14 @@ export default function PostJob() {
     setLocationError(null);
   };
 
+  const excludedDatesList = useMemo(
+    () =>
+      Array.from(excludedDates)
+        .filter((d) => d !== rangeStartDate && d !== rangeEndDate) // hide boundaries
+        .sort(),
+    [excludedDates, rangeStartDate, rangeEndDate]
+  );
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) {
@@ -360,7 +650,7 @@ export default function PostJob() {
               placeholder="Job title (e.g., Deep Cleaning Crew)"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              aria-invalid={submitted && title.trim().length < 4 || undefined}
+              aria-invalid={(submitted && title.trim().length < 4) || undefined}
               required
             />
           </div>
@@ -371,9 +661,27 @@ export default function PostJob() {
               placeholder="Describe the job, expectations, and any supplies provided"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              aria-invalid={submitted && description.trim().length < 12 || undefined}
+              aria-invalid={(submitted && description.trim().length < 12) || undefined}
               required
             />
+          </div>
+          <div className={`${styles.listItem} ${styles.listItemBlock}`}>
+            <Select<Option, true>
+              styles={languageSelectStyles}
+              isMulti
+              closeMenuOnSelect={false}
+              options={LANGUAGE_OPTIONS}
+              value={preferredLanguages}
+              placeholder="Preferred communication languages"
+              onChange={(values) => setPreferredLanguages((values || []) as Option[])}
+              menuPortalTarget={portalTarget}
+              menuPosition="fixed"
+            />
+            {submitted && preferredLanguages.length === 0 ? (
+              <span className={styles.formError}>Select at least one language.</span>
+            ) : (
+              <span className={styles.inputHint}>Tell providers which language you prefer to communicate in.</span>
+            )}
           </div>
           <div className={`${styles.listItem} ${styles.listItemBlock}`}>
             <label className={styles.uploadBox}>
@@ -393,31 +701,186 @@ export default function PostJob() {
         </div>
 
         <div className={styles.listGroup}>
-          <div className={styles.listItem}><span className={styles.listText} style={{ fontWeight: 900 }}>Schedule</span></div>
-          <div className={`${styles.listItem} ${styles.listItemBlock}`}>
-            <label className={styles.listText} style={{ width: "100%" }}>
-              Start
-              <input
-                type="datetime-local"
-                className={styles.searchInput}
-                value={start}
-                onChange={(e) => setStart(e.target.value)}
-                required
-              />
-            </label>
+          <div className={styles.listItem}>
+            <span className={styles.listText} style={{ fontWeight: 900 }}>Schedule</span>
           </div>
+
+          {/* Base range */}
           <div className={`${styles.listItem} ${styles.listItemBlock}`}>
-            <label className={styles.listText} style={{ width: "100%" }}>
-              End
-              <input
-                type="datetime-local"
-                className={styles.searchInput}
-                value={end}
-                min={start}
-                onChange={(e) => setEnd(e.target.value)}
-                required
-              />
-            </label>
+            <div className={styles.scheduleBaseGrid}>
+              <label className={styles.inlineField}>
+                <span className={styles.inlineLabel}>Start date</span>
+                <input
+                  className={styles.searchInput}
+                  type="date"
+                  value={rangeStartDate}
+                  onChange={(e) => onChangeStartDate(e.target.value)}
+                  required
+                />
+              </label>
+              <label className={styles.inlineField}>
+                <span className={styles.inlineLabel}>End date</span>
+                <input
+                  className={styles.searchInput}
+                  type="date"
+                  value={rangeEndDate}
+                  min={rangeStartDate}
+                  max={addDaysISO(rangeStartDate, 6)}  // cap to 7 days total
+                  onChange={(e) => onChangeEndDate(e.target.value)}
+                  required
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* Base times */}
+          <div className={`${styles.listItem} ${styles.listItemBlock}`}>
+            <div className={styles.scheduleBaseGrid}>
+              <label className={styles.inlineField}>
+                <span className={styles.inlineLabel}>Start time</span>
+                <input
+                  className={styles.searchInput}
+                  type="time"
+                  value={baseStartTime}
+                  onChange={(e) => setBaseStartTime(e.target.value)}
+                  required
+                />
+              </label>
+              <label className={styles.inlineField}>
+                <span className={styles.inlineLabel}>End time</span>
+                <input
+                  className={styles.searchInput}
+                  type="time"
+                  value={baseEndTime}
+                  onChange={(e) => setBaseEndTime(e.target.value)}
+                  required
+                />
+              </label>
+            </div>
+            {submitted && !baseTimesValid && (
+              <span className={styles.formError}>End time must be after start time.</span>
+            )}
+            <span className={styles.inputHint}>
+              These times apply to all days by default. You can fine-tune each day below.
+            </span>
+            {endDateSummary && (
+              <span className={styles.inputHint}>Schedule ends {endDateSummary}</span>
+            )}
+          </div>
+
+          {/* Excluded days quick panel */}
+          {excludedDatesList.length > 0 && (
+            <div className={`${styles.listItem} ${styles.listItemBlock}`} style={{ display: "grid", gap: 8 }}>
+              <div className={styles.listText} style={{ fontWeight: 700 }}>Excluded days</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {excludedDatesList.map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    className={styles.secondaryBtn}
+                    onClick={() => restoreDay(d)}
+                    title="Add this day back"
+                  >
+                    {d} — Add back
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Per-day controls */}
+          <div className={`${styles.listItem} ${styles.listItemBlock}`}>
+              <span className={styles.inputHint}>
+                Remove days in the range or adjust individual times as needed.
+              </span>
+            <div className={styles.scheduleDaysGrid}>
+              {daySlots.map((slot, index) => {
+                const isBoundary = slot.date === rangeStartDate || slot.date === rangeEndDate;
+                {/* Right below the three inputs */}
+                {(() => {
+                  const invalid = slot.startTime >= slot.endTime;
+                  if (invalid) return <span className={styles.formError}>End time must be after start time.</span>;
+                  if (excludedDates.has(slot.date)) return <span className={styles.inputHint}>Excluded from this request.</span>;
+                  if (slot.custom) return <span className={styles.inputHint}>Custom time for this day.</span>;
+                  return <span className={styles.inputHint}>Uses the default time.</span>;
+                })()}
+                return (
+                  <div key={`slot-${slot.date}`} className={styles.scheduleDayCard}>
+                    <div className={styles.scheduleDayHeader}>
+                      <span className={styles.scheduleDayLabel}>
+                        {new Date(`${slot.date}T00:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+                      </span>
+                      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                        {slot.custom ? (
+                          <button type="button" className={styles.scheduleResetBtn} onClick={() => resetDaySlot(index)}>
+                            Reset times
+                          </button>
+                        ) : null}
+                        {!isBoundary && (
+                          <button
+                            type="button"
+                            className={styles.scheduleResetBtn}   // <-- unify style
+                            onClick={() => excludeDay(slot.date)}
+                          >
+                            Remove day
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className={styles.scheduleDayInputs}>
+                      <label className={styles.inlineField}>
+                        <span className={styles.inlineLabel}>Date</span>
+                        <input
+                          className={styles.searchInput}
+                          type="date"
+                          value={slot.date}
+                          onChange={(e) => handleDaySlotChange(index, "date", e.target.value)}
+                          required
+                          min={rangeStartDate}
+                          max={rangeEndDate}
+                        />
+                      </label>
+                      <label className={styles.inlineField}>
+                        <span className={styles.inlineLabel}>Start</span>
+                        <input
+                          className={styles.searchInput}
+                          type="time"
+                          value={slot.startTime}
+                          onChange={(e) => handleDaySlotChange(index, "startTime", e.target.value)}
+                          required
+                        />
+                      </label>
+                      <label className={styles.inlineField}>
+                        <span className={styles.inlineLabel}>End</span>
+                        <input
+                          className={styles.searchInput}
+                          type="time"
+                          value={slot.endTime}
+                          onChange={(e) => handleDaySlotChange(index, "endTime", e.target.value)}
+                          required
+                        />
+                      </label>
+                    </div>
+                    {/* 🔹 Per-day state line (right below the inputs) */}
+                      {(() => {
+                        const invalid = slot.startTime >= slot.endTime;
+                        if (invalid) return <span className={styles.formError}>End time must be after start time.</span>;
+                        // Note: in PostJob, excluded days are not rendered (they’re filtered out of daySlots),
+                        // so the following branch typically won't hit. Safe to keep for parity with RequestService.
+                        if (excludedDates.has(slot.date)) return <span className={styles.inputHint}>Excluded from this request.</span>;
+                        if (slot.custom) return <span className={styles.inputHint}>Custom time for this day.</span>;
+                        return <span className={styles.inputHint}>Uses the default time.</span>;
+                      })()}
+                  </div>
+                );
+              })}
+            </div>
+            {submitted && !slotsValid && (
+              <span className={styles.formError}>Check each day – end time must be after start time (max 7 days).</span>
+            )}
+            {submitted && daySlots.length === 0 && (
+              <span className={styles.formError}>Your range excludes all days. Add back at least one day.</span>
+            )}
           </div>
         </div>
 
@@ -640,6 +1103,7 @@ export default function PostJob() {
             })}
           </div>
         </div>
+
         <div className={styles.actionRow}>
           <button className={styles.primaryBtn} type="submit" disabled={submitted && !canSubmit()}>
             Post Job

@@ -31,3 +31,40 @@
 .btn { background: rgb(169,174,155); color: #fff; }
 .ghost { background: #fff; border: 2px solid rgba(0,0,0,0.08); }
 .info { border-radius: 12px; background: #fff; border: 1px solid rgba(0,0,0,0.08); padding: 12px; font-weight: 700; }
+
+.contactBlock {
+  margin-top: 16px;
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+}
+
+.contactText {
+  margin: 0;
+  max-width: 520px;
+  color: #4b5563;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.contactText a {
+  color: rgb(169,174,155);
+  font-weight: 700;
+}
+
+.contactButton {
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: none;
+  background: rgb(169,174,155);
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+}
+
+.contactButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(0,0,0,0.16);
+  background: rgb(150,155,140);
+}

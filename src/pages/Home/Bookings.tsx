@@ -213,45 +213,6 @@ export default function Bookings() {
         </div>
       </div>
 
-      <div className={styles.summaryGrid}>
-        <article className={styles.summaryCard}>
-          <span className={styles.summaryLabel}>Completed value</span>
-          <strong className={styles.summaryValue}>{fmtAED(stats.spend)}</strong>
-          <span className={styles.summaryHint}>
-            {stats.completed ? `${stats.completed} job${stats.completed === 1 ? "" : "s"} completed` : "Secure your first completion"}
-          </span>
-        </article>
-        <article className={styles.summaryCard}>
-          <span className={styles.summaryLabel}>Awaiting payment</span>
-          <strong className={styles.summaryValue}>{stats.awaiting}</strong>
-          <span className={styles.summaryHint}>Send reminders to keep work moving</span>
-        </article>
-        <article className={styles.summaryCard}>
-          <span className={styles.summaryLabel}>Next booking</span>
-          {stats.next ? (
-            <>
-              <strong className={styles.summaryValue}>{fmtRange(stats.next.fromISO, stats.next.toISO)}</strong>
-              <span className={styles.summaryHint}>{stats.next.title}</span>
-            </>
-          ) : (
-            <>
-              <strong className={styles.summaryValue}>No upcoming</strong>
-              <span className={styles.summaryHint}>Plan your next service request</span>
-            </>
-          )}
-        </article>
-      </div>
-
-      <div className={styles.requestBanner}>
-        <div className={styles.requestCopy}>
-          <span className={styles.requestEyebrow}>Need support?</span>
-          <p className={styles.requestTitle}>Request a new service and we’ll match you with vetted providers.</p>
-        </div>
-        <button className={styles.requestButton} type="button" onClick={handleRequestService}>
-          Find providers
-        </button>
-      </div>
-
       {/* Tabs (neutral) */}
       <div className={styles.tabs} role="tablist" aria-label="Booking status">
         {TABS.map(t => (

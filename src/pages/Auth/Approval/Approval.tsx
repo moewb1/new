@@ -2,6 +2,12 @@ import React, { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import styles from "./Approval.module.css";
 import colors from "@/styles/colors";
+import ContactUsModal from "@/components/ContactUsModal/ContactUsModal";
+import {
+  CONTACT_EMAIL,
+  CONTACT_PHONE_DISPLAY,
+  CONTACT_WHATSAPP_URL,
+} from "@/constants/contact";
 
 export default function Approval() {
   const [search] = useSearchParams();
@@ -14,9 +20,13 @@ export default function Approval() {
     | "";
 
   const [message, setMessage] = useState<string>("");
+  const [contactModalOpen, setContactModalOpen] = useState(false);
 
   const role = resolvedRole;
   const title = useMemo(() => (role ? `${capitalize(role)} – Awaiting Approval` : "Awaiting Approval"), [role]);
+
+  const openContact = () => setContactModalOpen(true);
+  const closeContact = () => setContactModalOpen(false);
 
   function capitalize(s: string) {
     return s ? s[0].toUpperCase() + s.slice(1) : s;
@@ -64,8 +74,27 @@ export default function Approval() {
           <button className={styles.ghost} onClick={onRequestChanges}>Request Changes</button>
           <button className={styles.btn} onClick={onAccepted}>Accepted → Go to Home</button>
         </div>
+        <div className={styles.contactBlock}>
+          <p className={styles.contactText}>
+            Need a hand? Email us at
+            {" "}
+            <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
+            {" "}
+            or message us on WhatsApp at
+            {" "}
+            <a href={CONTACT_WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
+              {CONTACT_PHONE_DISPLAY}
+            </a>
+            .
+          </p>
+          <button className={styles.contactButton} onClick={openContact}>
+            Contact support
+          </button>
+        </div>
         {message && <div className={styles.info}>{message}</div>}
       </div>
+
+      <ContactUsModal open={contactModalOpen} onClose={closeContact} />
     </section>
   );
 }

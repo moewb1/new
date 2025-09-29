@@ -15,6 +15,9 @@ export type ProviderDetails = ProviderBase & {
   coords?: Coords;
   nationality?: string;
   nationalityCode?: string;
+  preferredLanguage?: string;
+  fullBodyPhoto?: string;
+  gallery?: string[];
 };
 
 export type ServiceInfo = {
@@ -74,6 +77,13 @@ export const STATIC_PROVIDERS: Record<string, ProviderDetails> = {
     coords: { latitude: 25.19213, longitude: 55.27289 },
     nationality: "Egyptian",
     nationalityCode: "EG",
+    preferredLanguage: "Arabic",
+    fullBodyPhoto: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?q=80&w=800&auto=format&fit=crop",
+    gallery: [
+      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=800&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1526312426976-f4d754fa9bd6?q=80&w=800&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1581579186989-2c4cc11d029c?q=80&w=800&auto=format&fit=crop",
+    ],
   },
   p2: {
     id: "p2",
@@ -88,6 +98,13 @@ export const STATIC_PROVIDERS: Record<string, ProviderDetails> = {
     coords: { latitude: 25.0741, longitude: 55.14493 },
     nationality: "Pakistani",
     nationalityCode: "PK",
+    preferredLanguage: "Urdu",
+    fullBodyPhoto: "https://images.unsplash.com/photo-1524504388940-1b0ed8f83a32?q=80&w=800&auto=format&fit=crop",
+    gallery: [
+      "https://images.unsplash.com/photo-1520975928316-46ec9046de02?q=80&w=800&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=800&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1544717305-996b815c338c?q=80&w=800&auto=format&fit=crop",
+    ],
   },
   p3: {
     id: "p3",
@@ -102,6 +119,13 @@ export const STATIC_PROVIDERS: Record<string, ProviderDetails> = {
     coords: { latitude: 25.10633, longitude: 55.20356 },
     nationality: "Indian",
     nationalityCode: "IN",
+    preferredLanguage: "English",
+    fullBodyPhoto: "https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=800&auto=format&fit=crop",
+    gallery: [
+      "https://images.unsplash.com/photo-1524504388940-9f1255a1e392?q=80&w=800&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=800&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=800&auto=format&fit=crop",
+    ],
   },
   p4: {
     id: "p4",
@@ -116,6 +140,13 @@ export const STATIC_PROVIDERS: Record<string, ProviderDetails> = {
     coords: { latitude: 25.2708, longitude: 55.30952 },
     nationality: "Jordanian",
     nationalityCode: "JO",
+    preferredLanguage: "Arabic",
+    fullBodyPhoto: "https://images.unsplash.com/photo-1504593811423-6dd665756598?q=80&w=800&auto=format&fit=crop",
+    gallery: [
+      "https://images.unsplash.com/photo-1520975928316-46ec9046de02?q=80&w=800&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?q=80&w=800&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1544005313-9e5c0f0d3d1c?q=80&w=800&auto=format&fit=crop",
+    ],
   },
 };
 

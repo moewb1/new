@@ -60,6 +60,9 @@ export default function ProviderDetails() {
                 </span>
               )}
               {p.address && <span className={styles.providerDetailLocation}>{p.address}</span>}
+              {p.preferredLanguage && (
+                <span className={styles.providerDetailLanguage}>Language: {p.preferredLanguage}</span>
+              )}
             </div>
           </div>
         </div>
@@ -121,6 +124,41 @@ export default function ProviderDetails() {
             <span className={styles.listText}>{p.address || '—'}</span>
           </div>
         </div>
+
+        {p.fullBodyPhoto && (
+          <div className={styles.listGroup}>
+            <div className={styles.listItem}>
+              <span className={styles.listText} style={{fontWeight:900}}>Full body photo</span>
+            </div>
+            <div className={styles.listItem}>
+              <img
+                src={p.fullBodyPhoto}
+                alt={`Full body of ${p.name}`}
+                className={styles.providerFullBody}
+              />
+            </div>
+          </div>
+        )}
+
+        {p.gallery?.length ? (
+          <div className={styles.listGroup}>
+            <div className={styles.listItem}>
+              <span className={styles.listText} style={{fontWeight:900}}>Gallery</span>
+            </div>
+            <div className={styles.listItem}>
+              <div className={styles.providerGallery}>
+                {p.gallery.map((url, idx) => (
+                  <img
+                    key={`${p.id}-gallery-${idx}`}
+                    src={url}
+                    alt={`${p.name} gallery ${idx + 1}`}
+                    className={styles.providerGalleryImg}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {p.coords && (
           <div className={styles.listGroup}>

@@ -124,6 +124,52 @@
 .sectionLabel{ margin:0; font-weight:900; font-size:16px; }
 .body{ margin:0; color:var(--ink); line-height:1.5; }
 
+.languageChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.languageChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.scheduleDayList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.scheduleDayItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(15, 23, 42, 0.035);
+}
+
+.scheduleDayDate {
+  font-weight: 900;
+  font-size: 14px;
+}
+
+.scheduleDayTime {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--muted);
+}
+
 /* Meta rows */
 .metaRow{ display:flex; align-items:center; gap:10px; }
 .metaIcon{ opacity:.65; font-size:16px; }

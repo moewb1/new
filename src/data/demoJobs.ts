@@ -35,6 +35,12 @@ export type DemoApplication = {
   service: DemoService;
 };
 
+export type DemoJobScheduleDay = {
+  dateISO: string;
+  startTime: string;
+  endTime: string;
+};
+
 export type DemoJob = {
   id: string;
   title: string;
@@ -55,6 +61,8 @@ export type DemoJob = {
   services: DemoService[];
   applications: DemoApplication[];
   awardedApplicationId?: string;
+  preferredLanguages?: string[];
+  scheduleDays?: DemoJobScheduleDay[];
 };
 
 export type DemoJobSummary = {
@@ -67,6 +75,7 @@ export type DemoJobSummary = {
   image: string;
   capacity: number;
   appliedCount: number;
+  preferredLanguages?: string[];
 };
 
 const STORAGE_KEY = "demo.consumer.jobs.v1";
@@ -369,6 +378,7 @@ const toSummary = (job: DemoJob): DemoJobSummary => ({
   image: job.image,
   capacity: job.capacity,
   appliedCount: job.applications.length,
+  preferredLanguages: job.preferredLanguages,
 });
 
 const dispatchUpdate = () => {
@@ -506,6 +516,8 @@ export type CreateJobInput = {
   category: string;
   image?: string;
   schedule: { fromISO: string; toISO: string };
+  scheduleDays?: DemoJobScheduleDay[];
+  preferredLanguages?: string[];
   address: {
     line1: string;
     city: string;
@@ -556,10 +568,24 @@ export const createConsumerJob = (input: CreateJobInput): DemoJob => {
   const countryMeta = COUNTRY_META[input.address.countryCode] || COUNTRY_META.AE;
   const scheduleStart = new Date(input.schedule.fromISO);
   const scheduleEnd = new Date(input.schedule.toISO);
-  const scheduleDurationMinutes = Math.max(
+  const normalizedScheduleDays = input.scheduleDays && input.scheduleDays.length
+    ? [...input.scheduleDays].sort((a, b) => a.dateISO.localeCompare(b.dateISO))
+    : undefined;
+
+  let scheduleDurationMinutes = Math.max(
     60,
     Math.round((scheduleEnd.getTime() - scheduleStart.getTime()) / 60000)
   );
+
+  if (normalizedScheduleDays?.length) {
+    const summed = normalizedScheduleDays.reduce((total, slot) => {
+      const start = new Date(`${slot.dateISO}T${slot.startTime}`);
+      const end = new Date(`${slot.dateISO}T${slot.endTime}`);
+      const diff = Math.max(0, end.getTime() - start.getTime());
+      return total + Math.round(diff / 60000);
+    }, 0);
+    scheduleDurationMinutes = Math.max(60, summed);
+  }
 
   const servicesWithPricing = input.services.map((svc) => {
     const durationHours = Math.max(1, (svc.durationMinutes ?? 60) / 60);
@@ -603,6 +629,8 @@ export const createConsumerJob = (input: CreateJobInput): DemoJob => {
     image: input.image || randomImageForCategory(input.category),
     services: servicesWithPricing,
     applications: [],
+    preferredLanguages: input.preferredLanguages ?? [],
+    scheduleDays: normalizedScheduleDays,
   };
 
   jobs.unshift(job);

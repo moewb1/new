@@ -140,6 +140,7 @@
 /* Card */
 .card{
   background: var(--card);
+  height: 300px;
   border:1px solid var(--line);
   border-radius: var(--radius);
   padding: 14px;

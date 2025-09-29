@@ -40,6 +40,22 @@ const formatDuration = (fromISO: string, toISO: string) => {
   return `${hours}h ${mins}m`;
 };
 
+const formatMinutes = (minutes: number) => {
+  const mins = Math.max(0, Math.round(minutes));
+  const hours = Math.floor(mins / 60);
+  const remain = mins % 60;
+  if (hours && remain) return `${hours}h ${remain}m`;
+  if (hours) return `${hours}h`;
+  return `${remain}m`;
+};
+
+const formatTimeLabel = (value: string) => {
+  const [hours, minutes] = value.split(":").map((part) => Number(part));
+  const date = new Date();
+  date.setHours(hours || 0, minutes || 0, 0, 0);
+  return date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+};
+
 const formatSubmitted = (iso: string) =>
   new Date(iso).toLocaleString(undefined, {
     month: "short",
@@ -67,6 +83,10 @@ type Profile = {
   name?: string;
   firstName?: string;
   lastName?: string;
+  profilePhoto?: string;
+  fullBodyPhoto?: string;
+  galleryPhotos?: string[];
+  preferredLanguage?: string;
 };
 
 const APPLIED_JOBS_STORAGE_KEY = "provider.appliedJobs";
@@ -243,14 +263,44 @@ export default function JobDetails() {
     setHasApplied(isJobAlreadyApplied(job.id));
   }, [job]);
 
-  const timeRange = useMemo(() => (job ? formatRange(job.schedule.fromISO, job.schedule.toISO) : ""), [job]);
-  const duration = useMemo(
-    () => (job ? formatDuration(job.schedule.fromISO, job.schedule.toISO) : ""),
-    [job]
-  );
+  const timeRange = useMemo(() => {
+    if (!job) return "";
+    if (job.scheduleDays?.length) {
+      const sorted = [...job.scheduleDays].sort((a, b) => a.dateISO.localeCompare(b.dateISO));
+      const last = sorted[sorted.length - 1];
+      const formatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
+      const lastDate = formatter.format(new Date(`${last.dateISO}T00:00:00`));
+      const startLabel = formatTimeLabel(last.startTime);
+      const endLabel = formatTimeLabel(last.endTime);
+      return `Ends ${lastDate} • ${startLabel} – ${endLabel}`;
+    }
+    return formatRange(job.schedule.fromISO, job.schedule.toISO);
+  }, [job]);
+
+  const duration = useMemo(() => {
+    if (!job) return "";
+    if (job.scheduleDays?.length) {
+      const minutes = job.scheduleDays.reduce((total, slot) => {
+        const start = Date.parse(`${slot.dateISO}T${slot.startTime}`);
+        const end = Date.parse(`${slot.dateISO}T${slot.endTime}`);
+        if (!Number.isFinite(start) || !Number.isFinite(end)) return total;
+        return total + Math.max(0, Math.round((end - start) / 60000));
+      }, 0);
+      return formatMinutes(minutes);
+    }
+    return formatDuration(job.schedule.fromISO, job.schedule.toISO);
+  }, [job]);
 
   const jobDurationMinutes = useMemo(() => {
     if (!job) return null;
+    if (job.scheduleDays?.length) {
+      return job.scheduleDays.reduce((total, slot) => {
+        const start = Date.parse(`${slot.dateISO}T${slot.startTime}`);
+        const end = Date.parse(`${slot.dateISO}T${slot.endTime}`);
+        if (!Number.isFinite(start) || !Number.isFinite(end)) return total;
+        return total + Math.max(0, Math.round((end - start) / 60000));
+      }, 0);
+    }
     const from = new Date(job.schedule.fromISO).getTime();
     const to = new Date(job.schedule.toISO).getTime();
     const diff = Math.max(0, to - from);
@@ -284,6 +334,24 @@ export default function JobDetails() {
   const selectedFull = selectedAccepted >= selectedCapacity;
   const canApply = isProvider && !hasApplied && !!selectedService && !selectedFull;
 
+  const dailySchedule = useMemo(() => {
+    if (!job?.scheduleDays?.length) return [] as { key: string; dateLabel: string; timeLabel: string }[];
+    const sorted = [...job.scheduleDays].sort((a, b) => a.dateISO.localeCompare(b.dateISO));
+    const formatter = new Intl.DateTimeFormat(undefined, {
+      weekday: "short",
+      month: "short",
+      day: "2-digit",
+    });
+    return sorted.map((slot, index) => {
+      const date = new Date(`${slot.dateISO}T00:00:00`);
+      return {
+        key: `${slot.dateISO}-${index}`,
+        dateLabel: formatter.format(date),
+        timeLabel: `${formatTimeLabel(slot.startTime)} – ${formatTimeLabel(slot.endTime)}`,
+      };
+    });
+  }, [job?.scheduleDays]);
+
   const openMaps = () => {
     if (!job) return;
     if (job.locationLink) {
@@ -307,6 +375,24 @@ export default function JobDetails() {
     }
   }, [job, canApply, selectedService]);
 
+  const categoryLabel = useMemo(() => (job ? formatCategoryLabel(job.category) : ""), [job?.category]);
+
+  const heroStats = useMemo(() => {
+    if (!job) return [] as { label: string; value: string }[];
+    const base = [
+      { label: "Schedule", value: timeRange },
+      { label: "Duration", value: duration },
+      { label: "Posted", value: job.postedAt },
+    ];
+    if (job.preferredLanguages?.length) {
+      base.push({ label: "Languages", value: job.preferredLanguages.join(", ") });
+    }
+    if (!isProvider) {
+      base.push({ label: "Applications", value: `${job.applications.length} total` });
+    }
+    return base.filter((item) => item.value);
+  }, [job, timeRange, duration, isProvider]);
+
   if (!job) {
     return (
       <section className={styles.page}>
@@ -325,18 +411,6 @@ export default function JobDetails() {
   }
 
   const status = jobStatusMeta[job.status];
-  const categoryLabel = useMemo(() => formatCategoryLabel(job.category), [job.category]);
-  const heroStats = useMemo(() => {
-    const base = [
-      { label: "Schedule", value: timeRange },
-      { label: "Duration", value: duration },
-      { label: "Posted", value: job.postedAt },
-    ];
-    if (!isProvider) {
-      base.push({ label: "Applications", value: `${job.applications.length} total` });
-    }
-    return base.filter((item) => item.value);
-  }, [timeRange, duration, job.postedAt, job.applications.length, isProvider]);
   const statusTone = styles[`jobHeroStatus_${job.status}`] || "";
 
   return (
@@ -378,15 +452,38 @@ export default function JobDetails() {
         <p className={styles.body}>{job.description}</p>
       </section>
 
+      {job.preferredLanguages?.length ? (
+        <section className={styles.card}>
+          <h3 className={styles.sectionLabel}>Preferred languages</h3>
+          <div className={styles.languageChips}>
+            {job.preferredLanguages.map((lang) => (
+              <span key={lang} className={styles.languageChip}>{lang}</span>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {dailySchedule.length ? (
+        <section className={styles.card}>
+          <h3 className={styles.sectionLabel}>Daily schedule</h3>
+          <ul className={styles.scheduleDayList}>
+            {dailySchedule.map((entry) => (
+              <li key={entry.key} className={styles.scheduleDayItem}>
+                <span className={styles.scheduleDayDate}>{entry.dateLabel}</span>
+                <span className={styles.scheduleDayTime}>{entry.timeLabel}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       {!!job.services.length && (
         <section className={styles.card}>
           <h3 className={styles.sectionLabel}>Services requested</h3>
           <div className={styles.serviceGrid}>
             {job.services.map((svc) => {
               const serviceDuration = jobDurationMinutes
-                ? jobDurationMinutes >= 60
-                  ? `${Math.round(jobDurationMinutes / 60)}h`
-                  : `${jobDurationMinutes} min`
+                ? formatMinutes(jobDurationMinutes)
                 : duration;
               const price = svc.priceMinor ? formatCurrency(svc.priceMinor, job.currency) : null;
               const countries = (svc.allowedCountries || []).map((code) => countryMeta.get(code)?.name ?? code);

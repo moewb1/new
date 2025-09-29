@@ -90,6 +90,9 @@ export default function ProviderList() {
                   <p className={styles.providerListMeta}>
                     ⭐ {provider.rating?.toFixed?.(1) ?? "4.8"} • {provider.jobsCompleted ?? 40} jobs
                   </p>
+                  {provider.preferredLanguage ? (
+                    <p className={styles.providerListLang}>Language: {provider.preferredLanguage}</p>
+                  ) : null}
                   {provider.bio ? (
                     <p className={styles.providerListBio}>{provider.bio}</p>
                   ) : null}

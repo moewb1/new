@@ -7,6 +7,13 @@ import {
   type DemoJobSummary,
 } from "@/data/demoJobs";
 import { SERVICE_CATALOG, STATIC_PROVIDERS } from "../Providers/data";
+import ContactUsModal from "@/components/ContactUsModal/ContactUsModal";
+import {
+  CONTACT_EMAIL,
+  CONTACT_PHONE_DISPLAY,
+  CONTACT_WHATSAPP_URL,
+} from "@/constants/contact";
+import { GmailIcon, WhatsAppIcon } from "@/components/icons/ContactIcons";
 
 /* ------------------ Types ------------------ */
 type SavedLocation = { lat: number; lng: number; address?: string };
@@ -15,6 +22,10 @@ type Profile = {
   name?: string;
   firstName?: string;
   lastName?: string;
+  profilePhoto?: string;
+  fullBodyPhoto?: string;
+  galleryPhotos?: string[];
+  preferredLanguage?: string;
 };
 type Job = {
   id: string;
@@ -22,6 +33,8 @@ type Job = {
   category: string;   // must match a category key
   consumerName: string;
   image?: string;     // optional (we have fallbacks)
+  preferredLanguages?: string[];
+  scheduleDays?: { dateISO: string; startTime: string; endTime: string }[];
 };
 type Notif = { id: string; title: string; body: string; timeISO: string; unread?: boolean };
 
@@ -136,6 +149,12 @@ const Icon = {
     <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
       <path d="M3 4h18v12H8l-5 5V4z"/>
       <path d="M7 8h10M7 12h7"/>
+    </svg>
+  ),
+  Support: (props: any) => (
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
+      <path d="M12 2a7 7 0 0 0-7 7v3a4 4 0 0 0-3 4v2h4v-2a4 4 0 0 0 4-4V9a2 2 0 0 1 4 0v3a4 4 0 0 0 4 4v2h4v-2a4 4 0 0 0-3-4V9a7 7 0 0 0-7-7z"/>
+      <path d="M9 21h6"/>
     </svg>
   ),
   Star: (props: any) => (
@@ -371,6 +390,11 @@ export default function Home() {
   }, []);
   const role = profile?.role || null;
   const displayName = getDisplayName(profile);
+  const profilePhoto = profile?.profilePhoto || null;
+  const fullBodyPhoto = profile?.fullBodyPhoto || null;
+  const galleryPhotos = Array.isArray(profile?.galleryPhotos) ? profile.galleryPhotos || [] : [];
+  const preferredLanguage = profile?.preferredLanguage || "";
+  const isProvider = role === "provider";
   const isConsumer = role === "consumer";
 
   const [consumerJobs, setConsumerJobs] = useState<DemoJobSummary[]>(() => getConsumerJobsSummary());
@@ -517,6 +541,8 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
+  const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [carouselIndex, setCarouselIndex] = useState(0);
 
   // Live filtering (instant)
   const filteredJobs = useMemo(() => {
@@ -531,7 +557,41 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
   const greeting = getGreeting();
   const nationalityCode = getNationalityCode();
 
+  const carouselSlides = useMemo(
+    () => [
+      {
+        image:
+          "https://images.unsplash.com/photo-1575936123452-b67c3203c357?q=80&w=1400&auto=format&fit=crop",
+        headline: "Premium staffing for headline events",
+        sub: "From red carpets to VIP galas, elevate guest experiences with curated teams.",
+      },
+      {
+        image:
+          "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1400&auto=format&fit=crop",
+        headline: "Five-star service, anywhere in the UAE",
+        sub: "Hospitality specialists, concierge pros, and multilingual hosts ready to go.",
+      },
+      {
+        image:
+          "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?q=80&w=1400&auto=format&fit=crop",
+        headline: "Your events, flawlessly executed",
+        sub: "Dedicated support managers keep every shift on schedule and on brand.",
+      },
+    ],
+    []
+  );
+
   const goQuick = (path: string) => navigate(path);
+  const openContact = () => setContactModalOpen(true);
+  const closeContact = () => setContactModalOpen(false);
+
+  useEffect(() => {
+    if (carouselSlides.length === 0) return;
+    const timer = window.setInterval(() => {
+      setCarouselIndex((prev) => (prev + 1) % carouselSlides.length);
+    }, 6000);
+    return () => window.clearInterval(timer);
+  }, [carouselSlides.length]);
 
   // Logout
   const logout = () => {
@@ -597,9 +657,13 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
               onClick={() => setProfileDrawerOpen(true)}
               title="Profile"
             >
-              <span className={styles.avatarLetter}>
-                {displayName?.[0]?.toUpperCase() || "U"}
-              </span>
+              {profilePhoto ? (
+                <img src={profilePhoto} alt="Profile" className={styles.avatarPhoto} />
+              ) : (
+                <span className={styles.avatarLetter}>
+                  {displayName?.[0]?.toUpperCase() || "U"}
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -640,31 +704,60 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
               <span className={styles.quickText}>Chat</span>
             </button>
             <button className={styles.quickCard} onClick={() => goQuick("/applications")}>
-             <Icon.Application className={styles.quickIcon} />
+              <Icon.Application className={styles.quickIcon} />
               <span className={styles.quickText}>Applications</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Consumer Add Job banner */}
+      {/* Featured banner carousel */}
+      <section className={styles.promoCarousel} aria-label="Featured services">
+        {carouselSlides.map((slide, idx) => (
+          <article
+            key={slide.image}
+            className={`${styles.promoSlide} ${carouselIndex === idx ? styles.promoSlideActive : ""}`}
+            style={{ backgroundImage: `url(${slide.image})` }}
+            aria-hidden={carouselIndex === idx ? false : true}
+          >
+            <div className={styles.promoOverlay}>
+              <span className={styles.promoEyebrow}>Khidma Spotlight</span>
+              <h3 className={styles.promoHeadline}>{slide.headline}</h3>
+              <p className={styles.promoSub}>{slide.sub}</p>
+            </div>
+          </article>
+        ))}
+        <div className={styles.promoDots} role="tablist" aria-label="Featured banner selector">
+          {carouselSlides.map((_, idx) => (
+            <button
+              key={`dot-${idx}`}
+              type="button"
+              className={`${styles.promoDot} ${carouselIndex === idx ? styles.promoDotActive : ""}`}
+              onClick={() => setCarouselIndex(idx)}
+              aria-label={`Show banner ${idx + 1}`}
+              aria-selected={carouselIndex === idx}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* Consumer quick CTA */}
       {isConsumer && (
-        <div className={styles.addJobCta}>
-          <div className={styles.addJobCtaCopy}>
-            <span className={styles.addJobCtaEyebrow}>Need a hand?</span>
-            <h3 className={styles.addJobCtaTitle}>Post a job and get matched within minutes.</h3>
-            <p className={styles.addJobCtaBody}>
-              Share what you need done, choose the best offer, and stay in control from start to finish.
+        <div className={styles.createJobCard}>
+          <div className={styles.createJobCopy}>
+            <h3 className={styles.createJobTitle}>Need talent fast?</h3>
+            <p className={styles.createJobBody}>
+              Launch a new job post in under a minute and start receiving proposals from trusted professionals.
             </p>
           </div>
           <button
-            className={styles.addJobCtaButton}
+            className={styles.createJobButton}
             onClick={() => navigate("/jobs/post")}
-            aria-label="Post a job"
+            aria-label="Create a job"
           >
-            <Icon.Application className={styles.addJobCtaIcon} />
-            <span>Post a job</span>
-            <Icon.ChevronRight className={styles.addJobCtaArrow} />
+            <Icon.Application className={styles.createJobIcon} />
+            <span>Create a job</span>
+            <Icon.ChevronRight className={styles.createJobArrow} />
           </button>
         </div>
       )}
@@ -707,10 +800,25 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
                   </div>
                   <div className={styles.jobBody}>
                     <h3 className={styles.jobTitle}>{job.title}</h3>
-                    <p className={styles.jobMeta}>Posted {job.postedAt}</p>
+                    <p className={styles.jobMeta}>by <b>{job.consumerName}</b></p>
+                    {Array.isArray(job.preferredLanguages) && job.preferredLanguages.length > 0 ? (
+                      <div className={styles.jobLanguages}>
+                        {job.preferredLanguages.map((lang) => (
+                          <span key={lang} className={styles.jobLanguagePill}>{lang}</span>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                   <div className={styles.jobActions}>
-                    <button className={styles.secondaryBtn} onClick={() => navigate(`/jobs/${job.id}`)}>View</button>
+                    {role === "provider" ? (
+                      <button className={styles.primaryBtn} onClick={() => navigate(`/jobs/${job.id}`)}>
+                        Apply
+                      </button>
+                    ) : (
+                      <button className={styles.secondaryBtn} onClick={() => navigate(`/jobs/${job.id}`)}>
+                        View
+                      </button>
+                    )}
                   </div>
                 </article>
               ))
@@ -849,6 +957,13 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
                   <div className={styles.jobBody}>
                     <h3 className={styles.jobTitle}>{job.title}</h3>
                     <p className={styles.jobMeta}>by <b>{job.consumerName}</b></p>
+                    {Array.isArray(job.preferredLanguages) && job.preferredLanguages.length > 0 ? (
+                      <div className={styles.jobLanguages}>
+                        {job.preferredLanguages.map((lang) => (
+                          <span key={lang} className={styles.jobLanguagePill}>{lang}</span>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className={styles.jobActions}>
@@ -875,6 +990,31 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
         </>
       )}
 
+      <footer className={styles.footer}>
+        <div className={styles.footerHeading}>Need help?</div>
+        <p className={styles.footerText}>
+          Reach our support team and we’ll respond within one business day.
+        </p>
+        <div className={styles.footerLinks}>
+          <a className={styles.footerLink} href={`mailto:${CONTACT_EMAIL}`}>
+            <GmailIcon className={styles.footerLinkIcon} />
+            <span>{CONTACT_EMAIL}</span>
+          </a>
+          <a
+            className={styles.footerLink}
+            href={CONTACT_WHATSAPP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <WhatsAppIcon className={styles.footerLinkIcon} />
+            <span>{CONTACT_PHONE_DISPLAY}</span>
+          </a>
+        </div>
+        <button className={styles.footerButton} onClick={openContact}>
+          Contact support
+        </button>
+      </footer>
+
       {/* Profile Drawer */}
       {profileDrawerOpen && (
         <>
@@ -883,15 +1023,50 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
             <div className={styles.drawerHeader}>
               <button className={styles.drawerClose} onClick={() => setProfileDrawerOpen(false)} aria-label="Close">×</button>
               <div className={styles.drawerAvatar}>
-                {displayName?.[0]?.toUpperCase() || "U"}
+                {profilePhoto ? (
+                  <img src={profilePhoto} alt="Profile" />
+                ) : (
+                  displayName?.[0]?.toUpperCase() || "U"
+                )}
               </div>
               <div className={styles.drawerTitle}>
                 <div className={styles.drawerName}>{displayName}</div>
                 {role ? <div className={styles.drawerRole}>{role}</div> : null}
+
               </div>
             </div>
 
             <div className={styles.drawerBody}>
+
+              <div className={styles.profileInfoCard}>
+                {isProvider && (
+                <div className={styles.profileInfoRow}>
+                  <span className={styles.profileInfoLabel}>Preferred language</span>
+                  <span className={styles.profileInfoValue}>{preferredLanguage || "Not set"}</span>
+                </div>
+                 )}
+                {isProvider && fullBodyPhoto ? (
+                  <div className={styles.profileInfoMedia}>
+                    <span className={styles.profileInfoLabel}>Full body photo</span>
+                    <img src={fullBodyPhoto} alt="Full body" className={styles.profileInfoImg} />
+                  </div>
+                ) : null}
+                {isProvider && galleryPhotos.length > 0 ? (
+                  <div className={styles.profileInfoGallery}>
+                    {galleryPhotos.slice(0, 4).map((photo, idx) => (
+                      <img
+                        key={`gallery-${idx}`}
+                        src={photo}
+                        alt={`Gallery ${idx + 1}`}
+                        className={styles.profileInfoThumb}
+                      />
+                    ))}
+                    {galleryPhotos.length > 4 && (
+                      <span className={styles.profileInfoMore}>+{galleryPhotos.length - 4}</span>
+                    )}
+                  </div>
+                ) : null}
+              </div>
 
               {/* Navigation list */}
               <div className={styles.listGroup}>
@@ -947,6 +1122,18 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
                     <Icon.ChevronRight className={styles.chev} />
                   </button>
                 )}
+
+                <button
+                  className={styles.listItem}
+                  onClick={() => {
+                    setProfileDrawerOpen(false);
+                    openContact();
+                  }}
+                >
+                  <span className={styles.listIcon}><Icon.Support /></span>
+                  <span className={styles.listText}>Contact Us</span>
+                  <Icon.ChevronRight className={styles.chev} />
+                </button>
 
                 {/* Privacy Policy */}
                 <button
@@ -1110,6 +1297,8 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
       </aside>
     </>
   )}
+
+      <ContactUsModal open={contactModalOpen} onClose={closeContact} />
 
     </section>
   );
