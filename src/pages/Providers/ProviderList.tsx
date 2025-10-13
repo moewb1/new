@@ -34,7 +34,7 @@ export default function ProviderList() {
   const heroRate = formatRate(selectedService?.hourlyRateMinor);
 
   return (
-    <section className={styles.wrapper}>
+    <section className={`${styles.wrapper} ${styles.providerListPage}`}>
       <header className={styles.providerHeader}>
         <div className={styles.providerHeaderText}>
           <span className={styles.providerHeaderEyebrow}>Service marketplace</span>

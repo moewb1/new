@@ -14,6 +14,13 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+.providerListPage {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 @media (max-width: 81.25em) {
   .wrapper {
     width: 88%;
@@ -835,9 +842,11 @@
   display: grid;
   gap: 16px;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  flex: 1;
 }
 .providerListCard {
   border-radius: 16px;
+  height: 320px;
   border: 1px solid rgba(15, 23, 42, 0.08);
   background: #fff;
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
@@ -910,6 +919,7 @@
 }
 .providerListService {
   padding: 6px 10px;
+  height: 30px;
   border-radius: 999px;
   background: rgba(169, 174, 155, 0.18);
   font-weight: 700;
