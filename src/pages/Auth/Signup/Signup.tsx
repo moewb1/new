@@ -3,6 +3,12 @@ import styles from "./Signup.module.css";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import colors from "@/styles/colors";
 import { startGuestSession } from "@/utils/auth";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  resetAuthRequests,
+  signup as signupThunk,
+  type SignupPayload,
+} from "@/store/slices/authSlice";
 
 /* your assets */
 import appleLogo from "@/assets/Apple_logo.svg";
@@ -15,6 +21,8 @@ const cx = (...list: Array<string | false | null | undefined>) =>
 export default function Signup() {
   const [search] = useSearchParams();
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const signupRequest = useAppSelector((state) => state.auth.signup);
 
   const role = search.get("role"); // "provider" | "consumer" | null
   const roleLabel =
@@ -57,16 +65,41 @@ export default function Signup() {
     navigate("/home", { replace: true });
   }, [navigate, role]);
 
-  const onSubmit = (e: React.FormEvent) => {
+  React.useEffect(() => {
+    dispatch(resetAuthRequests());
+  }, [dispatch]);
+
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
-    if (!isFormValid) return;
+    if (!isFormValid || signupRequest.status === "loading") return;
+
+    const normalisedRole =
+      role === "provider" || role === "consumer" ? role : undefined;
+
+    const payload: SignupPayload = {
+      fname: firstName.trim(),
+      lname: lastName.trim(),
+      email: email.trim(),
+      password,
+      role: normalisedRole,
+    };
+
+    const result = await dispatch(signupThunk(payload));
+    if (!signupThunk.fulfilled.match(result)) return;
+
     sessionStorage.setItem("onboardingFlow", "signup");
 
     navigate(
-      `/auth/otp?email=${encodeURIComponent(email)}&flow=signup${role ? `&role=${role}` : ""}`
+      `/auth/otp?email=${encodeURIComponent(payload.email)}&flow=signup${
+        normalisedRole ? `&role=${normalisedRole}` : ""
+      }`,
+      { state: { signupForm: payload } }
     );
   };
+
+  const isSubmitting = signupRequest.status === "loading";
+  const signupError = signupRequest.error;
 
   return (
     <section className={styles.wrapper}>
@@ -168,12 +201,21 @@ export default function Signup() {
         <button
           className={styles.cta}
           type="submit"
-          style={{ background: colors.accent, color: colors.white, opacity: isFormValid ? 1 : 0.6 }}
-          disabled={!isFormValid}
-          aria-disabled={!isFormValid}
+          style={{
+            background: colors.accent,
+            color: colors.white,
+            opacity: isFormValid && !isSubmitting ? 1 : 0.6,
+          }}
+          disabled={!isFormValid || isSubmitting}
+          aria-disabled={!isFormValid || isSubmitting}
         >
-          {cta}
+          {isSubmitting ? "Creating account…" : cta}
         </button>
+        {signupError ? (
+          <p className={styles.error} role="alert">
+            {signupError}
+          </p>
+        ) : null}
       </form>
 
       <div className={styles.socialBlock}>

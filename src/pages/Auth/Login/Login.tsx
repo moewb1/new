@@ -3,6 +3,12 @@ import styles from "./Login.module.css";
 import { Link, useNavigate, useSearchParams, createSearchParams } from "react-router-dom";
 import colors from "@/styles/colors";
 import { startGuestSession } from "@/utils/auth";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  login as loginThunk,
+  type LoginPayload,
+  resetAuthRequests,
+} from "@/store/slices/authSlice";
 
 /* reuse the same assets you added for signup */
 import appleLogo from "@/assets/Apple_logo.svg";
@@ -10,7 +16,9 @@ import googleLogo from "@/assets/Google_logo.svg.webp";
 
 export default function Login() {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const dispatch = useAppDispatch();
+  const [searchParams] = useSearchParams();
+  const loginRequest = useAppSelector((state) => state.auth.login);
 
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -19,7 +27,6 @@ export default function Login() {
   const [touchedEmail, setTouchedEmail] = React.useState(false);
   const [touchedPassword, setTouchedPassword] = React.useState(false);
   const [submitted, setSubmitted] = React.useState(false);
-  const [submitting, setSubmitting] = React.useState(false);
 
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const isValidPass = password.length >= 6;
@@ -27,6 +34,8 @@ export default function Login() {
 
   const showEmailError = (touchedEmail || submitted) && !isValidEmail;
   const showPassError = (touchedPassword || submitted) && !isValidPass;
+  const isSubmitting = loginRequest.status === "loading";
+  const loginError = loginRequest.error;
 
   // Initialize role from URL on mount
   React.useEffect(() => {
@@ -34,24 +43,31 @@ export default function Login() {
     if (r === "provider" || r === "consumer") setRole(r);
   }, [searchParams]);
 
+  React.useEffect(() => {
+    dispatch(resetAuthRequests());
+  }, [dispatch]);
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
-    if (!formValid || submitting) return;
+    if (!formValid || loginRequest.status === "loading") return;
 
-    // TODO: call your real login API here
-    setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 700)); // simulate
-    setSubmitting(false);
+    const payload: LoginPayload = {
+      email: email.trim(),
+      password,
+    };
+    if (role) payload.role = role;
 
-    // 2FA step -> go to OTP
+    const result = await dispatch(loginThunk(payload));
+    if (!loginThunk.fulfilled.match(result)) return;
+
     sessionStorage.setItem("onboardingFlow", "login");
     const params: Record<string, string> = {
-      email: email,
+      email: payload.email,
       flow: "login",
     };
-    if (role) params.role = role;
-    navigate(`/auth/otp?${createSearchParams(params).toString()}`);
+    if (payload.role) params.role = payload.role;
+    navigate(`/auth/otp?${createSearchParams(params).toString()}`, { state: { loginForm: payload } });
   };
 
   const handleGuest = React.useCallback(() => {
@@ -142,13 +158,18 @@ export default function Login() {
           style={{
             background: colors.accent,
             color: colors.white,
-            opacity: formValid && !submitting ? 1 : 0.6,
+            opacity: formValid && !isSubmitting ? 1 : 0.6,
           }}
-          disabled={!formValid || submitting}
-          aria-disabled={!formValid || submitting}
+          disabled={!formValid || isSubmitting}
+          aria-disabled={!formValid || isSubmitting}
         >
-          {submitting ? "Logging In…" : "Log In"}
+          {isSubmitting ? "Logging In…" : "Log In"}
         </button>
+        {loginError ? (
+          <p className={styles.error} role="alert">
+            {loginError}
+          </p>
+        ) : null}
       </form>
 
       <div className={styles.socialBlock}>

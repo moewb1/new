@@ -2,6 +2,10 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./EditProfile.module.css";
 import colors from "@/styles/colors";
+import { createOrUpdateProfile } from "@/services/profileService";
+import { buildProfileSubmissionPayload } from "@/utils/profileSubmission";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { fetchLanguages } from "@/store/slices/metaSlice";
 
 type Profile = {
   role?: "provider" | "consumer";
@@ -12,19 +16,12 @@ type Profile = {
   email?: string;
   profilePhoto?: string;
   fullBodyPhoto?: string;
+  standingPhoto?: string;
+  sittingPhoto?: string;
   galleryPhotos?: string[];
   preferredLanguage?: string;
+  preferredLanguageIds?: number[];
 };
-
-const LANGUAGE_OPTIONS = [
-  "Arabic",
-  "English",
-  "French",
-  "Hindi",
-  "Malayalam",
-  "Tagalog",
-  "Urdu",
-];
 
 const MAX_GALLERY_PHOTOS = 12;
 
@@ -56,6 +53,34 @@ export default function EditProfile() {
     catch { return {}; }
   }, []);
 
+  const dispatch = useAppDispatch();
+  const languagesState = useAppSelector((state) => state.meta.languages);
+  const languageOptions = useMemo(() => {
+    return (languagesState.data || []).map((lang) => ({
+      id: lang.id,
+      label: lang.name || lang.code || `Language ${lang.id}`,
+    }));
+  }, [languagesState.data]);
+  const storedProfileLanguageIds = Array.isArray(storedProfile.preferredLanguageIds)
+    ? storedProfile.preferredLanguageIds
+    : [];
+  const storedIdentityLanguageIds = Array.isArray(
+    (storedIdentity as Record<string, unknown>).preferredLanguageIds
+  )
+    ? ((storedIdentity as Record<string, unknown>).preferredLanguageIds as number[])
+    : [];
+  const storedPreferredLanguageName = useMemo(() => {
+    const profileLang = (storedProfile.preferredLanguage || "") as string;
+    const identityLang = (storedIdentity.preferredLanguage || "") as string;
+    return (profileLang || identityLang || "").trim();
+  }, [storedIdentity.preferredLanguage, storedProfile.preferredLanguage]);
+  const initialPreferredLanguageId = useMemo(() => {
+    const fromProfile = storedProfileLanguageIds.find((id) => typeof id === "number");
+    if (typeof fromProfile === "number") return fromProfile;
+    const fromIdentity = storedIdentityLanguageIds.find((id) => typeof id === "number");
+    return typeof fromIdentity === "number" ? fromIdentity : null;
+  }, [storedIdentityLanguageIds, storedProfileLanguageIds]);
+
   const role = storedProfile.role;
   const isProvider = role === "provider";
 
@@ -65,11 +90,12 @@ export default function EditProfile() {
   const [email, setEmail]         = useState(storedProfile.email || "");
   const [profilePhoto, setProfilePhoto] = useState<string | undefined>(storedProfile.profilePhoto);
   const [fullBodyPhoto, setFullBodyPhoto] = useState<string | undefined>(storedProfile.fullBodyPhoto);
+  const [sittingPhoto, setSittingPhoto] = useState<string | undefined>(storedProfile.sittingPhoto);
   const [galleryPhotos, setGalleryPhotos] = useState<string[]>(
     Array.isArray(storedProfile.galleryPhotos) ? storedProfile.galleryPhotos : []
   );
-  const [preferredLanguage, setPreferredLanguage] = useState<string>(
-    storedProfile.preferredLanguage || storedIdentity.preferredLanguage || ""
+  const [preferredLanguageId, setPreferredLanguageId] = useState<number | null>(
+    initialPreferredLanguageId
   );
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -84,6 +110,27 @@ export default function EditProfile() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (languagesState.status === "idle") {
+      dispatch(fetchLanguages());
+    }
+  }, [dispatch, languagesState.status]);
+
+  useEffect(() => {
+    if (
+      typeof preferredLanguageId !== "number" &&
+      languageOptions.length > 0 &&
+      storedPreferredLanguageName
+    ) {
+      const match = languageOptions.find(
+        (opt) => opt.label.toLowerCase() === storedPreferredLanguageName.toLowerCase()
+      );
+      if (match) {
+        setPreferredLanguageId(match.id);
+      }
+    }
+  }, [languageOptions, preferredLanguageId, storedPreferredLanguageName]);
 
   const emailOk = useMemo(() => {
     if (!email) return false;
@@ -101,7 +148,8 @@ export default function EditProfile() {
   const lastOk  = (lastName || "").trim().length >= 2;
   const profilePhotoOk = Boolean(profilePhoto);
   const fullBodyOk = isProvider ? Boolean(fullBodyPhoto) : true;
-  const languageOk = isProvider ? Boolean((preferredLanguage || "").trim()) : true;
+  const sittingPhotoOk = isProvider ? Boolean(sittingPhoto) : true;
+  const languageOk = isProvider ? typeof preferredLanguageId === "number" : true;
   const galleryLimitOk = galleryPhotos.length <= MAX_GALLERY_PHOTOS;
   const allOk =
     firstOk &&
@@ -110,6 +158,7 @@ export default function EditProfile() {
     emailOk &&
     profilePhotoOk &&
     fullBodyOk &&
+    sittingPhotoOk &&
     languageOk &&
     galleryLimitOk;
 
@@ -155,6 +204,28 @@ export default function EditProfile() {
 
   const clearFullBodyPhoto = () => {
     setFullBodyPhoto(undefined);
+  };
+
+  const handleSittingPhotoChange: React.ChangeEventHandler<HTMLInputElement> = async (event) => {
+    const fileList = event.target.files;
+    const file = fileList && fileList[0];
+    event.target.value = "";
+    if (!file) return;
+    try {
+      const url = await fileToDataUrl(file);
+      if (url) {
+        setSittingPhoto(url);
+      }
+    } catch (error) {
+      console.error("Failed to read sitting photo", error);
+      if (typeof window !== "undefined") {
+        window.alert("We couldn't read that photo. Please try another file.");
+      }
+    }
+  };
+
+  const clearSittingPhoto = () => {
+    setSittingPhoto(undefined);
   };
 
   const handleGalleryChange: React.ChangeEventHandler<HTMLInputElement> = async (event) => {
@@ -212,7 +283,9 @@ export default function EditProfile() {
       const cleanLast = lastName.trim();
       const cleanPhone = phone.trim();
       const cleanEmail = email.trim();
-      const cleanLanguage = (preferredLanguage || "").trim();
+      const selectedLanguage =
+        languageOptions.find((opt) => opt.id === preferredLanguageId) || null;
+      const selectedLanguageLabel = selectedLanguage?.label?.trim() || "";
 
       const next: Profile = {
         ...storedProfile,
@@ -222,9 +295,12 @@ export default function EditProfile() {
         phone: cleanPhone,
         email: cleanEmail,
         profilePhoto: profilePhoto,
-        fullBodyPhoto: isProvider ? fullBodyPhoto : undefined,
+        fullBodyPhoto: isProvider ? fullBodyPhoto : storedProfile.fullBodyPhoto,
+        standingPhoto: isProvider ? fullBodyPhoto : storedProfile.standingPhoto,
+        sittingPhoto: isProvider ? sittingPhoto : storedProfile.sittingPhoto,
         galleryPhotos: galleryPhotos.length ? galleryPhotos : undefined,
-        preferredLanguage: cleanLanguage || undefined,
+        preferredLanguage: selectedLanguageLabel || undefined,
+        preferredLanguageIds: selectedLanguage ? [selectedLanguage.id] : undefined,
       };
 
       localStorage.setItem("profile", JSON.stringify(next));
@@ -233,18 +309,33 @@ export default function EditProfile() {
         ...storedIdentity,
         phone: cleanPhone,
         preferredLanguage: next.preferredLanguage || null,
+        preferredLanguageIds: next.preferredLanguageIds || [],
         profilePhotoSet: Boolean(next.profilePhoto),
         fullBodyPhotoSet: Boolean(next.fullBodyPhoto),
+        standingPhotoSet: Boolean(next.standingPhoto),
+        sittingPhotoSet: Boolean(next.sittingPhoto),
         galleryCount: next.galleryPhotos?.length ?? 0,
         savedAt: new Date().toISOString(),
       };
       localStorage.setItem("kyc.identity", JSON.stringify(nextIdentity));
 
+      const payload = buildProfileSubmissionPayload({
+        requireMedia: true,
+      });
+      const response = await createOrUpdateProfile(payload);
+      if (response && response.success === false) {
+        throw new Error(response.message || "We couldn't update your profile on the server.");
+      }
+
       navigate("/home");
     } catch (error) {
       console.error("Failed to save profile", error);
       if (typeof window !== "undefined") {
-        window.alert("We couldn't save your profile. Please try again.");
+        const message =
+          error instanceof Error
+            ? error.message
+            : "We couldn't save your profile. Please try again.";
+        window.alert(message);
       }
     } finally {
       setSaving(false);
@@ -348,55 +439,100 @@ export default function EditProfile() {
           </div>
 
           {isProvider && (
-            <div className={styles.row}>
-              <label className={styles.label}>Full body photo *</label>
-              <div className={styles.mediaRow}>
-                {fullBodyPhoto ? (
-                  <img src={fullBodyPhoto} alt="Full body preview" className={styles.photoPreview} />
-                ) : (
-                  <div className={styles.photoPlaceholder}>No photo</div>
-                )}
-                <div className={styles.mediaActions}>
-                  <label className={styles.uploadBtn}>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFullBodyPhotoChange}
-                      className={styles.fileInput}
-                    />
-                    {fullBodyPhoto ? "Replace photo" : "Upload photo"}
-                  </label>
-                  {fullBodyPhoto && (
-                    <button type="button" className={styles.linkAction} onClick={clearFullBodyPhoto}>
-                      Remove
-                    </button>
+            <>
+              <div className={styles.row}>
+                <label className={styles.label}>Standing photo *</label>
+                <div className={styles.mediaRow}>
+                  {fullBodyPhoto ? (
+                    <img src={fullBodyPhoto} alt="Standing photo preview" className={styles.photoPreview} />
+                  ) : (
+                    <div className={styles.photoPlaceholder}>No photo</div>
                   )}
+                  <div className={styles.mediaActions}>
+                    <label className={styles.uploadBtn}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFullBodyPhotoChange}
+                        className={styles.fileInput}
+                      />
+                      {fullBodyPhoto ? "Replace photo" : "Upload photo"}
+                    </label>
+                    {fullBodyPhoto && (
+                      <button type="button" className={styles.linkAction} onClick={clearFullBodyPhoto}>
+                        Remove
+                      </button>
+                    )}
+                  </div>
                 </div>
+                <p className={styles.hint}>Show a full-length standing photo so clients can see your presence.</p>
+                {submitted && !fullBodyOk && (
+                  <p className={styles.error}>Standing photo is required for providers.</p>
+                )}
               </div>
-              <p className={styles.hint}>Show a full-length photo so clients can see your presence.</p>
-              {submitted && !fullBodyOk && <p className={styles.error}>Full body photo is required for providers.</p>}
-            </div>
+
+              <div className={styles.row}>
+                <label className={styles.label}>Sitting photo *</label>
+                <div className={styles.mediaRow}>
+                  {sittingPhoto ? (
+                    <img src={sittingPhoto} alt="Sitting photo preview" className={styles.photoPreview} />
+                  ) : (
+                    <div className={styles.photoPlaceholder}>No photo</div>
+                  )}
+                  <div className={styles.mediaActions}>
+                    <label className={styles.uploadBtn}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleSittingPhotoChange}
+                        className={styles.fileInput}
+                      />
+                      {sittingPhoto ? "Replace photo" : "Upload photo"}
+                    </label>
+                    {sittingPhoto && (
+                      <button type="button" className={styles.linkAction} onClick={clearSittingPhoto}>
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <p className={styles.hint}>Provide a seated photo to support your verification.</p>
+                {submitted && !sittingPhotoOk && (
+                  <p className={styles.error}>Sitting photo is required for providers.</p>
+                )}
+              </div>
+            </>
           )}
 
-          {isProvider && (
-
-                      <div className={styles.row}>
+          <div className={styles.row}>
             <label className={styles.label}>
               Preferred language{isProvider ? " *" : " (optional)"}
             </label>
             <select
               className={`${styles.input} ${(isProvider && submitted && !languageOk) ? styles.inputError : ""}`}
-              value={preferredLanguage}
-              onChange={(e) => setPreferredLanguage(e.target.value)}
+              value={typeof preferredLanguageId === "number" ? preferredLanguageId.toString() : ""}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (!value) {
+                  setPreferredLanguageId(null);
+                } else {
+                  setPreferredLanguageId(Number(value));
+                }
+              }}
+              disabled={languageOptions.length === 0}
             >
-              <option value="">Select language…</option>
-              {LANGUAGE_OPTIONS.map((lang) => (
-                <option key={lang} value={lang}>
-                  {lang}
+              <option value="">
+                {languagesState.status === "loading" ? "Loading languages…" : "Select language…"}
+              </option>
+              {languageOptions.map((lang) => (
+                <option key={lang.id} value={lang.id}>
+                  {lang.label}
                 </option>
               ))}
             </select>
-            {isProvider ? (
+            {languagesState.status === "failed" ? (
+              <p className={styles.error}>Unable to load languages. Please try again shortly.</p>
+            ) : isProvider ? (
               submitted && !languageOk ? (
                 <p className={styles.error}>Preferred language is required for providers.</p>
               ) : (
@@ -406,9 +542,6 @@ export default function EditProfile() {
               <p className={styles.hint}>Optional: helps us communicate with you.</p>
             )}
           </div>
-          )
-          
-          }
 
           {isProvider && (
             <div className={styles.row}>

@@ -1,7 +1,9 @@
-import React, { useMemo, useState, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./IdentityOnboarding.module.css";
 import colors from "@/styles/colors";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { fetchLanguages, fetchNationalities } from "@/store/slices/metaSlice";
 
 /* 📱 Phone with flags + formatting */
 import { PhoneInput } from "react-international-phone";
@@ -24,7 +26,6 @@ import type {
   GroupBase,
   StylesConfig,
 } from "react-select";
-import countryList from "react-select-country-list";
 import CountryFlag from "react-country-flag";
 
 /* 📤 File upload (polished UI) */
@@ -51,31 +52,26 @@ type StoredProfile = {
   email?: string;
   profilePhoto?: string;
   fullBodyPhoto?: string;
+  standingPhoto?: string;
+  sittingPhoto?: string;
   galleryPhotos?: string[];
   preferredLanguages?: string[];
   preferredLanguage?: string;
+  preferredLanguageIds?: number[];
+  nationalityId?: number;
+  nationalityCode?: string;
 };
 type LanguageOption = {
-  value: string;
+  value: number;
   label: string;
-  countryCode?: string;
+  code?: string | null;
 };
-
-const LANGUAGE_OPTIONS: LanguageOption[] = [
-  { value: "Arabic", label: "Arabic", countryCode: "AE" },
-  { value: "English", label: "English", countryCode: "GB" },
-  { value: "French", label: "French", countryCode: "FR" },
-  { value: "Hindi", label: "Hindi", countryCode: "IN" },
-  { value: "Malayalam", label: "Malayalam", countryCode: "IN" },
-  { value: "Tagalog", label: "Tagalog", countryCode: "PH" },
-  { value: "Urdu", label: "Urdu", countryCode: "PK" },
-];
 
 type PersonType = "individual" | "company";
 type DocType = "passport" | "national_id" | "driver_license";
 
 /** Option shape from react-select-country-list */
-type CountryOption = { value: string; label: string };
+type CountryOption = { value: number; label: string; code: string };
 
 /* --- utils --- */
 function isAdultDate(d: Date | null) {
@@ -138,14 +134,14 @@ const CountryOptionRow = (
     <components.Option {...props}>
       <div className={styles.countryRow}>
         <CountryFlag
-          countryCode={data.value}
+          countryCode={data.code}
           svg
           style={{ width: 18, height: 18, borderRadius: 4 }}
           aria-label={data.label}
         />
         <span className={styles.countryText}>{data.label}</span>
         <span style={{ marginLeft: "auto", opacity: 0.6, fontWeight: 700 }}>
-          {data.value}
+          {data.code}
         </span>
       </div>
     </components.Option>
@@ -160,14 +156,14 @@ const CountrySingleValue = (
     <components.SingleValue {...props}>
       <div className={styles.countryRow}>
         <CountryFlag
-          countryCode={data.value}
+          countryCode={data.code}
           svg
           style={{ width: 18, height: 18, borderRadius: 4 }}
           aria-label={data.label}
         />
         <span className={styles.countryText}>{data.label}</span>
         <span style={{ marginLeft: 8, opacity: 0.6, fontWeight: 700 }}>
-          ({data.value})
+          ({data.code})
         </span>
       </div>
     </components.SingleValue>
@@ -181,9 +177,9 @@ const LanguageOptionRow = (
   return (
     <components.Option {...props}>
       <div className={styles.languageRow}>
-        {data.countryCode ? (
+        {data.code ? (
           <CountryFlag
-            countryCode={data.countryCode}
+            countryCode={data.code}
             svg
             style={{ width: 18, height: 18, borderRadius: 4 }}
             aria-label={`${data.label} flag`}
@@ -204,9 +200,9 @@ const LanguageMultiValueLabel = (
   return (
     <components.MultiValueLabel {...props}>
       <span className={styles.languageChip}>
-        {data.countryCode ? (
+        {data.code ? (
           <CountryFlag
-            countryCode={data.countryCode}
+            countryCode={data.code}
             svg
             style={{ width: 14, height: 14, borderRadius: 3 }}
             aria-label={`${data.label} flag`}
@@ -220,6 +216,25 @@ const LanguageMultiValueLabel = (
 
 export default function IdentityOnboarding() {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const languagesState = useAppSelector((state) => state.meta.languages);
+  const nationalitiesState = useAppSelector((state) => state.meta.nationalities);
+  const languageOptions = useMemo<LanguageOption[]>(() => {
+    const items = languagesState.data || [];
+    return items.map((item) => ({
+      value: item.id,
+      label: item.name || item.code || `Language ${item.id}`,
+      code: item.code ?? null,
+    }));
+  }, [languagesState.data]);
+  const nationalityOptions = useMemo<CountryOption[]>(() => {
+    const items = nationalitiesState.data || [];
+    return items.map((item) => ({
+      value: item.id,
+      label: item.name,
+      code: item.code,
+    }));
+  }, [nationalitiesState.data]);
   const profile = useMemo<StoredProfile>(() => {
     try {
       return JSON.parse(localStorage.getItem("profile") || "{}") as StoredProfile;
@@ -232,38 +247,76 @@ export default function IdentityOnboarding() {
   const [personType, setPersonType] = useState<PersonType>("individual");
   const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
   const [fullBodyPhotoFile, setFullBodyPhotoFile] = useState<File | null>(null);
+  const [sittingPhotoFile, setSittingPhotoFile] = useState<File | null>(null);
   const [extraPhotoFiles, setExtraPhotoFiles] = useState<File[]>([]);
-  const initialPreferredLanguageOptions = useMemo<LanguageOption[]>(() => {
+  const derivePreferredLanguageOptions = useCallback((): LanguageOption[] => {
+    const byIds = Array.isArray(profile.preferredLanguageIds)
+      ? profile.preferredLanguageIds
+          .map((id) => languageOptions.find((opt) => opt.value === id) || null)
+          .filter((opt): opt is LanguageOption => Boolean(opt))
+      : [];
+    if (byIds.length) {
+      return byIds;
+    }
     const storedLanguages = Array.isArray(profile.preferredLanguages)
       ? profile.preferredLanguages
       : [];
-    const fallbackLanguages = typeof profile.preferredLanguage === "string" && profile.preferredLanguage
-      ? profile.preferredLanguage.split(",").map((lang) => lang.trim()).filter(Boolean)
-      : [];
+    const fallbackLanguages =
+      typeof profile.preferredLanguage === "string" && profile.preferredLanguage
+        ? profile.preferredLanguage.split(",").map((lang) => lang.trim()).filter(Boolean)
+        : [];
     const merged = [...storedLanguages, ...fallbackLanguages];
-    const seen = new Set<string>();
+    const seen = new Set<number>();
     return merged
-      .map((lang) => lang.trim())
-      .filter((lang) => {
-        if (!lang) return false;
-        const key = lang.toLowerCase();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
+      .map((lang) => {
+        const normalised = lang.trim().toLowerCase();
+        const match = languageOptions.find((opt) => {
+          const labelMatch = opt.label.toLowerCase() === normalised;
+          const codeMatch = opt.code ? opt.code.toLowerCase() === normalised : false;
+          return labelMatch || codeMatch;
+        });
+        return match || null;
       })
-      .map((lang) =>
-        LANGUAGE_OPTIONS.find((opt) => opt.value.toLowerCase() === lang.toLowerCase()) ||
-        null
-      )
-      .filter((opt): opt is LanguageOption => Boolean(opt));
-  }, [profile.preferredLanguage, profile.preferredLanguages]);
-  const [preferredLanguages, setPreferredLanguages] = useState<LanguageOption[]>(
-    initialPreferredLanguageOptions
-  );
+      .filter((opt): opt is LanguageOption => {
+        if (!opt) return false;
+        if (seen.has(opt.value)) return false;
+        seen.add(opt.value);
+        return true;
+      });
+  }, [languageOptions, profile.preferredLanguage, profile.preferredLanguageIds, profile.preferredLanguages]);
+  const [preferredLanguages, setPreferredLanguages] = useState<LanguageOption[]>([]);
+
+  useEffect(() => {
+    if (languagesState.status === "idle") {
+      dispatch(fetchLanguages());
+    }
+    if (nationalitiesState.status === "idle") {
+      dispatch(fetchNationalities());
+    }
+  }, [dispatch, languagesState.status, nationalitiesState.status]);
+
+  useEffect(() => {
+    if (preferredLanguages.length === 0 && languageOptions.length > 0) {
+      const derived = derivePreferredLanguageOptions();
+      if (derived.length) {
+        setPreferredLanguages(derived);
+      }
+    }
+  }, [derivePreferredLanguageOptions, languageOptions, preferredLanguages.length]);
 
   const existingProfilePhoto = profile.profilePhoto || null;
-  const existingFullBodyPhoto = profile.fullBodyPhoto || null;
+  const existingFullBodyPhoto = profile.fullBodyPhoto || profile.standingPhoto || null;
+  const existingSittingPhoto = profile.sittingPhoto || null;
   const existingGallery = Array.isArray(profile.galleryPhotos) ? profile.galleryPhotos : [];
+
+  const storedKycDocument = useMemo(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem("kyc.files") || "{}");
+      return raw?.kycDocument ?? null;
+    } catch {
+      return null;
+    }
+  }, []);
 
   // DOB
   const [dobDate, setDobDate] = useState<Date | null>(null);
@@ -274,14 +327,30 @@ export default function IdentityOnboarding() {
   }, []);
   const dobOk = isAdultDate(dobDate);
 
-  // Nationality (keyboard-searchable react-select)
-  const countries = useMemo<CountryOption[]>(() => countryList().getData(), []);
-  const defaultNationality =
-    countries.find((c) => c.value === "AE") ??
-    ({ value: "AE", label: "United Arab Emirates" } as CountryOption);
-  const [nationality, setNationality] = useState<CountryOption>(
-    defaultNationality
-  );
+  const [nationality, setNationality] = useState<CountryOption | null>(null);
+
+  useEffect(() => {
+    if (!nationality && nationalityOptions.length > 0) {
+      const storedId =
+        typeof profile.nationalityId === "number" ? profile.nationalityId : undefined;
+      const storedCode =
+        typeof profile.nationalityCode === "string" ? profile.nationalityCode : undefined;
+      const derived =
+        (storedId
+          ? nationalityOptions.find((opt) => opt.value === storedId)
+          : undefined) ||
+        (storedCode
+          ? nationalityOptions.find(
+              (opt) => opt.code.toLowerCase() === storedCode.toLowerCase()
+            )
+          : undefined) ||
+        nationalityOptions.find((opt) => opt.code === "AE") ||
+        nationalityOptions[0];
+      if (derived) {
+        setNationality(derived);
+      }
+    }
+  }, [nationality, nationalityOptions, profile.nationalityCode, profile.nationalityId]);
 
   // Phone — smart handling with country-aware length limiting.
   const [phone, setPhone] = useState<string>("+971 ");
@@ -300,8 +369,7 @@ export default function IdentityOnboarding() {
         | undefined;
 
       const iso2 = parsed?.country;
-      const countryLabel =
-        (iso2 && countries.find((c) => c.value === iso2)?.label) || "this country";
+      const countryLabel = iso2 || "this country";
 
       let message = "";
       if (!valid && (phoneTouched || !phone.trim())) {
@@ -315,7 +383,7 @@ export default function IdentityOnboarding() {
     } catch {
       return { phoneValid: false, phoneMessage: phoneTouched ? "Enter a valid phone number." : "" };
     }
-  }, [phone, phoneTouched, countries]);
+  }, [phone, phoneTouched]);
 
   // Hard-limit input when TOO_LONG by trimming last character(s)
   const handlePhoneChange = (val: string) => {
@@ -342,7 +410,10 @@ export default function IdentityOnboarding() {
 
   const requiresFullBody = role === "provider" && personType === "individual";
   const hasProfilePhoto = Boolean(profilePhotoFile || existingProfilePhoto);
-  const hasFullBodyPhoto = !requiresFullBody || Boolean(fullBodyPhotoFile || existingFullBodyPhoto);
+  const hasStandingPhoto =
+    !requiresFullBody || Boolean(fullBodyPhotoFile || existingFullBodyPhoto);
+  const hasSittingPhoto =
+    !requiresFullBody || Boolean(sittingPhotoFile || existingSittingPhoto);
   const languageOk = role === "provider" ? preferredLanguages.length > 0 : true;
   const languageInvalid = role === "provider" && submitted && !languageOk;
   const allOk =
@@ -353,7 +424,8 @@ export default function IdentityOnboarding() {
     !!phone &&
     phoneValid &&
     hasProfilePhoto &&
-    hasFullBodyPhoto &&
+    hasStandingPhoto &&
+    hasSittingPhoto &&
     languageOk;
 
   const onContinue = async (e: React.FormEvent) => {
@@ -371,11 +443,46 @@ export default function IdentityOnboarding() {
         latestProfile = {};
       }
 
-      const profilePhotoData = (await fileToDataUrl(profilePhotoFile)) ?? latestProfile.profilePhoto ?? null;
-      let fullBodyPhotoData: string | null = latestProfile.fullBodyPhoto ?? null;
+      const profilePhotoData =
+        (await fileToDataUrl(profilePhotoFile)) ?? latestProfile.profilePhoto ?? null;
+
+      let fullBodyPhotoData: string | null =
+        latestProfile.fullBodyPhoto ?? latestProfile.standingPhoto ?? null;
       if (requiresFullBody) {
-        fullBodyPhotoData = (await fileToDataUrl(fullBodyPhotoFile)) ?? latestProfile.fullBodyPhoto ?? null;
+        fullBodyPhotoData =
+          (await fileToDataUrl(fullBodyPhotoFile)) ??
+          latestProfile.fullBodyPhoto ??
+          latestProfile.standingPhoto ??
+          null;
       }
+
+      let sittingPhotoData: string | null = latestProfile.sittingPhoto ?? null;
+      if (requiresFullBody) {
+        sittingPhotoData =
+          (await fileToDataUrl(sittingPhotoFile)) ?? latestProfile.sittingPhoto ?? null;
+      }
+
+      let latestKycFiles: Record<string, unknown> = {};
+      try {
+        latestKycFiles = JSON.parse(localStorage.getItem("kyc.files") || "{}") || {};
+      } catch {
+        latestKycFiles = {};
+      }
+
+      const kycDocumentDataUrl =
+        (await fileToDataUrl(file)) ||
+        (latestKycFiles as any)?.kycDocument?.dataUrl ||
+        null;
+
+      const kycDocumentRecord = kycDocumentDataUrl
+        ? {
+            dataUrl: kycDocumentDataUrl,
+            name: file?.name ?? (latestKycFiles as any)?.kycDocument?.name ?? null,
+            type: file?.type ?? (latestKycFiles as any)?.kycDocument?.type ?? null,
+            lastModified:
+              file?.lastModified ?? (latestKycFiles as any)?.kycDocument?.lastModified ?? null,
+          }
+        : null;
 
       const extraGalleryUrls = await filesToDataUrls(extraPhotoFiles);
       const mergedGallery = Array.isArray(latestProfile.galleryPhotos)
@@ -387,37 +494,78 @@ export default function IdentityOnboarding() {
         });
       }
 
-      const uniquePreferredLanguages = Array.from(
+      const uniquePreferredLanguageIds = Array.from(
         new Set(preferredLanguages.map((opt) => opt.value))
       );
-      const preferredLanguageDisplay = uniquePreferredLanguages.join(", ");
+      const uniquePreferredLanguageLabels = uniquePreferredLanguageIds
+        .map((id) => {
+          const fromState =
+            preferredLanguages.find((opt) => opt.value === id) ||
+            languageOptions.find((opt) => opt.value === id);
+          return fromState?.label ?? "";
+        })
+        .filter((label) => Boolean(label));
+      const preferredLanguageDisplay = uniquePreferredLanguageLabels.join(", ");
+
+      const normalizedStandingPhoto =
+        requiresFullBody
+          ? fullBodyPhotoData
+          : latestProfile.standingPhoto ??
+            latestProfile.fullBodyPhoto ??
+            fullBodyPhotoData;
+
+      const normalizedSittingPhoto =
+        requiresFullBody ? sittingPhotoData : latestProfile.sittingPhoto ?? null;
 
       const nextProfile: StoredProfile = {
         ...latestProfile,
         profilePhoto: profilePhotoData || undefined,
-        fullBodyPhoto: requiresFullBody ? fullBodyPhotoData || undefined : fullBodyPhotoData || undefined,
+        fullBodyPhoto: normalizedStandingPhoto || undefined,
+        standingPhoto: normalizedStandingPhoto || undefined,
+        sittingPhoto: normalizedSittingPhoto || undefined,
         preferredLanguages:
-          uniquePreferredLanguages.length > 0 ? uniquePreferredLanguages : undefined,
+          uniquePreferredLanguageLabels.length > 0 ? uniquePreferredLanguageLabels : undefined,
+        preferredLanguageIds:
+          uniquePreferredLanguageIds.length > 0 ? uniquePreferredLanguageIds : undefined,
         preferredLanguage: preferredLanguageDisplay || undefined,
+        nationalityId: nationality?.value ?? latestProfile.nationalityId,
+        nationalityCode: nationality?.code ?? latestProfile.nationalityCode,
         galleryPhotos: mergedGallery.length > 0 ? mergedGallery : undefined,
       };
 
       localStorage.setItem("profile", JSON.stringify(nextProfile));
 
+      if (kycDocumentRecord) {
+        localStorage.setItem(
+          "kyc.files",
+          JSON.stringify({
+            ...(latestKycFiles || {}),
+            kycDocument: kycDocumentRecord,
+          })
+        );
+      }
+
       const identity = {
         personType,
         dob: dobDate ? toISODateOnly(dobDate) : null,
-        nationality: nationality.label,
-        nationalityCode: nationality.value,
+        nationality: nationality?.label ?? null,
+        nationalityCode: nationality?.code ?? null,
+        nationalityId: nationality?.value ?? null,
         phone: normalizeE164(phone),
         docType,
-        docName: file?.name || null,
+        docName: kycDocumentRecord?.name || file?.name || null,
         preferredLanguages: nextProfile.preferredLanguages ?? [],
         preferredLanguage: nextProfile.preferredLanguage || null,
+        preferredLanguageIds: nextProfile.preferredLanguageIds ?? [],
         profilePhotoSet: Boolean(nextProfile.profilePhoto),
         fullBodyPhotoSet: Boolean(nextProfile.fullBodyPhoto),
+        standingPhotoSet: Boolean(nextProfile.standingPhoto),
+        sittingPhotoSet: Boolean(nextProfile.sittingPhoto),
         galleryCount: nextProfile.galleryPhotos?.length ?? 0,
         savedAt: new Date().toISOString(),
+        docDataUrl: kycDocumentRecord?.dataUrl || null,
+        docMimeType: kycDocumentRecord?.type || null,
+        docLastModified: kycDocumentRecord?.lastModified ?? null,
       };
 
       localStorage.setItem("kyc.identity", JSON.stringify(identity));
@@ -541,7 +689,7 @@ export default function IdentityOnboarding() {
   // Filter to search by country name OR ISO code
   const countryFilter = createFilter<CountryOption>({
     ignoreCase: true,
-    stringify: (option) => `${option.label} ${option.value}`,
+    stringify: (option) => `${option.label} ${option.code}`,
     trim: true,
     matchFrom: "any",
   });
@@ -621,19 +769,29 @@ export default function IdentityOnboarding() {
         <div className={styles.row}>
           <label className={styles.label}>Nationality</label>
           <Select<CountryOption, false>
-            options={countries}
+            options={nationalityOptions}
             value={nationality}
-            onChange={(v) => v && setNationality(v)}
+            onChange={(v) => setNationality(v ?? null)}
             components={{ Option: CountryOptionRow, SingleValue: CountrySingleValue }}
             styles={selectStyles}
             className={styles.selectWrapper}
             classNamePrefix="react-select"
             isSearchable
+            isLoading={nationalitiesState.status === "loading"}
+            isDisabled={nationalityOptions.length === 0}
             filterOption={countryFilter}
-            placeholder="Search country…"
-            noOptionsMessage={() => "No countries found"}
+            placeholder={nationalitiesState.status === "loading" ? "Loading…" : "Search country…"}
+            noOptionsMessage={() =>
+              nationalitiesState.status === "loading" ? "Loading…" : "No countries found"
+            }
             menuPlacement="auto"
+            getOptionValue={(option) => option.value.toString()}
           />
+          {nationalitiesState.status === "failed" ? (
+            <p className={styles.error}>Unable to load nationalities. Please try again.</p>
+          ) : submitted && !nationality ? (
+            <p className={styles.error}>Please select a nationality.</p>
+          ) : null}
         </div>
 
         {/* Phone (country-aware, no immediate error) */}
@@ -703,37 +861,69 @@ export default function IdentityOnboarding() {
           {submitted && !hasProfilePhoto && <p className={styles.error}>Please upload a profile photo.</p>}
         </div>
 
-        {/* Full body photo (provider individual) */}
+        {/* Full body & sitting photos (provider individual) */}
         {role === "provider" && personType === "individual" && (
-          <div className={styles.row}>
-            <label className={styles.label}>Full body photo</label>
-            <div className={`${styles.pondWrap} ${(submitted && !hasFullBodyPhoto) ? styles.inputError : ""}`}>
-              <FilePond
-                allowMultiple={false}
-                acceptedFileTypes={["image/jpeg", "image/png", "image/webp"]}
-                labelFileTypeNotAllowed="Only JPG, PNG, or WebP images"
-                maxFileSize="8MB"
-                labelMaxFileSizeExceeded="Image is too large"
-                onupdatefiles={(items: FilePondFile[]) =>
-                  setFullBodyPhotoFile((items[0]?.file as File) ?? null)
-                }
-                credits={false}
-                className={styles.pond}
-                name="fullBodyPhoto"
-              />
-            </div>
-            {existingFullBodyPhoto && !fullBodyPhotoFile ? (
-              <div className={styles.previewRow}>
-                <img src={existingFullBodyPhoto} alt="Current full body" className={styles.previewThumb} />
-                <p className={styles.hint}>Existing photo will stay unless you replace it.</p>
+          <>
+            <div className={styles.row}>
+              <label className={styles.label}>Full body photo (standing)</label>
+              <div className={`${styles.pondWrap} ${(submitted && !hasStandingPhoto) ? styles.inputError : ""}`}>
+                <FilePond
+                  allowMultiple={false}
+                  acceptedFileTypes={["image/jpeg", "image/png", "image/webp"]}
+                  labelFileTypeNotAllowed="Only JPG, PNG, or WebP images"
+                  maxFileSize="8MB"
+                  labelMaxFileSizeExceeded="Image is too large"
+                  onupdatefiles={(items: FilePondFile[]) =>
+                    setFullBodyPhotoFile((items[0]?.file as File) ?? null)
+                  }
+                  credits={false}
+                  className={styles.pond}
+                  name="standingPhoto"
+                />
               </div>
-            ) : (
-              <p className={styles.hint}>Upload a full-length photo so clients can see your presence.</p>
-            )}
-            {submitted && !hasFullBodyPhoto && (
-              <p className={styles.error}>Please upload a full body photo.</p>
-            )}
-          </div>
+              {existingFullBodyPhoto && !fullBodyPhotoFile ? (
+                <div className={styles.previewRow}>
+                  <img src={existingFullBodyPhoto} alt="Current standing photo" className={styles.previewThumb} />
+                  <p className={styles.hint}>Existing photo will stay unless you replace it.</p>
+                </div>
+              ) : (
+                <p className={styles.hint}>Upload a full-length standing photo so clients can see your presence.</p>
+              )}
+              {submitted && !hasStandingPhoto && (
+                <p className={styles.error}>Please upload a standing full body photo.</p>
+              )}
+            </div>
+
+            <div className={styles.row}>
+              <label className={styles.label}>Sitting photo</label>
+              <div className={`${styles.pondWrap} ${(submitted && !hasSittingPhoto) ? styles.inputError : ""}`}>
+                <FilePond
+                  allowMultiple={false}
+                  acceptedFileTypes={["image/jpeg", "image/png", "image/webp"]}
+                  labelFileTypeNotAllowed="Only JPG, PNG, or WebP images"
+                  maxFileSize="8MB"
+                  labelMaxFileSizeExceeded="Image is too large"
+                  onupdatefiles={(items: FilePondFile[]) =>
+                    setSittingPhotoFile((items[0]?.file as File) ?? null)
+                  }
+                  credits={false}
+                  className={styles.pond}
+                  name="sittingPhoto"
+                />
+              </div>
+              {existingSittingPhoto && !sittingPhotoFile ? (
+                <div className={styles.previewRow}>
+                  <img src={existingSittingPhoto} alt="Current sitting photo" className={styles.previewThumb} />
+                  <p className={styles.hint}>Existing photo will stay unless you replace it.</p>
+                </div>
+              ) : (
+                <p className={styles.hint}>Upload a seated photo for identity verification.</p>
+              )}
+              {submitted && !hasSittingPhoto && (
+                <p className={styles.error}>Please upload a sitting photo.</p>
+              )}
+            </div>
+          </>
         )}
 
         {/* Additional gallery photos */}
@@ -778,22 +968,33 @@ export default function IdentityOnboarding() {
             <Select<LanguageOption, true>
               className={styles.selectWrapper}
               classNamePrefix="react-select"
-              options={LANGUAGE_OPTIONS}
+              options={languageOptions}
               value={preferredLanguages}
-              onChange={(selected) => setPreferredLanguages((selected || []) as LanguageOption[])}
+              onChange={(selected) =>
+                setPreferredLanguages((selected || []) as LanguageOption[])
+              }
               components={{ Option: LanguageOptionRow, MultiValueLabel: LanguageMultiValueLabel }}
               styles={languageSelectStyles}
               isMulti
               closeMenuOnSelect={false}
               hideSelectedOptions={false}
-              placeholder="Select languages…"
-              noOptionsMessage={() => "No languages found"}
+              placeholder={
+                languagesState.status === "loading" ? "Loading languages…" : "Select languages…"
+              }
+              noOptionsMessage={() =>
+                languagesState.status === "loading" ? "Loading…" : "No languages found"
+              }
               isClearable
               isSearchable
+              isDisabled={languageOptions.length === 0}
+              isLoading={languagesState.status === "loading"}
               menuPlacement="auto"
               aria-invalid={languageInvalid}
+              getOptionValue={(option) => option.value.toString()}
             />
-            {submitted && !languageOk ? (
+            {languagesState.status === "failed" ? (
+              <p className={styles.error}>Unable to load languages. Please try again.</p>
+            ) : submitted && !languageOk ? (
               <p className={styles.error}>Select at least one language.</p>
             ) : (
               <p className={styles.hint}>Pick every language you can confidently speak with clients.</p>
@@ -826,7 +1027,11 @@ export default function IdentityOnboarding() {
         {/* Upload (FilePond) */}
         <div className={styles.row}>
           <label className={styles.label}>Upload document (JPG, PNG, or PDF)</label>
-          <div className={`${styles.pondWrap} ${submitted && !file ? styles.inputError : ""}`}>
+          <div
+            className={`${styles.pondWrap} ${
+              submitted && !(file || storedKycDocument) ? styles.inputError : ""
+            }`}
+          >
             <FilePond
               allowMultiple={false}
               onupdatefiles={(items: FilePondFile[]) => setFile((items[0]?.file as File) ?? null)}
@@ -839,8 +1044,18 @@ export default function IdentityOnboarding() {
               name="kycDocument"
             />
           </div>
-          {!file && submitted && <p className={styles.error}>Please upload a document.</p>}
-          {file?.name ? <p className={styles.hint}>Selected: <b>{file.name}</b></p> : null}
+          {!file && !storedKycDocument && submitted && (
+            <p className={styles.error}>Please upload a document.</p>
+          )}
+          {file?.name ? (
+            <p className={styles.hint}>
+              Selected: <b>{file.name}</b>
+            </p>
+          ) : storedKycDocument?.name ? (
+            <p className={styles.hint}>
+              Current document: <b>{storedKycDocument.name}</b>
+            </p>
+          ) : null}
         </div>
 
         {/* Actions */}

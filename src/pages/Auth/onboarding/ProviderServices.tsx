@@ -2,24 +2,26 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./ProviderServices.module.css";
 import colors from "@/styles/colors";
-
-const ALL_SERVICES = [
-  { key: "waitress", label: "Waitress" },
-  { key: "security", label: "Security" },
-  { key: "hostess", label: "Hostess",  },
-  { key: "merchandise", label: "Merchandise" },
-  { key: "cleaning", label: "Cleaning"},
-  { key: "driver", label: "Driver"},
-  { key: "babysitting", label: "Babysitting" },
-  { key: "chef", label: "Chef"},
-  { key: "event_planner", label: "Event Planner" },
-];
+import { createOrUpdateProfile } from "@/services/profileService";
+import { buildProfileSubmissionPayload } from "@/utils/profileSubmission";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  fetchServices,
+  type Service,
+} from "@/store/slices/metaSlice";
 
 export default function ProviderServices() {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const servicesState = useAppSelector((state) => state.meta.services);
+  const services = servicesState.data;
+
   const profile = useMemo(() => {
-    try { return JSON.parse(localStorage.getItem("profile") || "{}"); }
-    catch { return {}; }
+    try {
+      return JSON.parse(localStorage.getItem("profile") || "{}");
+    } catch {
+      return {};
+    }
   }, []);
 
   // Guard: if not provider, skip to bank
@@ -29,22 +31,104 @@ export default function ProviderServices() {
     }
   }, [profile, navigate]);
 
-  const [selected, setSelected] = useState<string[]>(
-    JSON.parse(localStorage.getItem("provider.services") || "[]")
-  );
-  const [submitted, setSubmitted] = useState(false);
+  useEffect(() => {
+    if (servicesState.status === "idle") {
+      dispatch(fetchServices());
+    }
+  }, [dispatch, servicesState.status]);
 
-  const toggle = (key: string) => {
-    setSelected(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
+  const inferLegacySelection = React.useCallback((serviceList: Service[]) => {
+    try {
+      const raw = JSON.parse(localStorage.getItem("provider.services") || "[]");
+      if (!Array.isArray(raw)) return [];
+
+      const numeric = raw.filter((value): value is number => typeof value === "number");
+      const convertedFromStrings = raw
+        .filter((value): value is string => typeof value === "string")
+        .map((value) => {
+          const normalised = value.replace(/_/g, " ").toLowerCase();
+          const match = serviceList.find((svc) => svc.name.toLowerCase() === normalised);
+          return match?.id ?? null;
+        })
+        .filter((value): value is number => value !== null);
+
+      return Array.from(new Set([...numeric, ...convertedFromStrings]));
+    } catch {
+      return [];
+    }
+  }, []);
+
+  const [selected, setSelected] = useState<number[]>(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem("provider.services") || "[]");
+      if (!Array.isArray(raw)) return [];
+      return raw
+        .map((value) => {
+          if (typeof value === "number" && Number.isFinite(value)) return value;
+          const numeric = Number(value);
+          return Number.isFinite(numeric) ? numeric : null;
+        })
+        .filter((value): value is number => value !== null);
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    if (services.length > 0) {
+      const legacy = inferLegacySelection(services);
+      if (legacy.length && legacy.some((id) => !selected.includes(id))) {
+        setSelected((prev) => Array.from(new Set([...prev, ...legacy])));
+      }
+    }
+  }, [services, inferLegacySelection, selected]);
+
+  const [submitted, setSubmitted] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const toggle = (serviceId: number) => {
+    setSelected((prev) =>
+      prev.includes(serviceId)
+        ? prev.filter((id) => id !== serviceId)
+        : [...prev, serviceId]
+    );
   };
 
-  const onContinue = (e: React.FormEvent) => {
+  const onContinue = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
-    if (selected.length === 0) return;
+    if (selected.length === 0 || saving) return;
+
+    setError(null);
     localStorage.setItem("provider.services", JSON.stringify(selected));
-    navigate("/auth/approval?role=provider");
+
+    setSaving(true);
+    try {
+      const payload = buildProfileSubmissionPayload({
+        serviceIds: selected,
+        requireMedia: true,
+      });
+
+      const response = await createOrUpdateProfile(payload);
+      if (response && response.success === false) {
+        throw new Error(response.message || "Profile submission failed.");
+      }
+
+      setSaving(false);
+      navigate("/auth/approval?role=provider");
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "We couldn't submit your profile. Please try again.";
+      setError(message);
+      setSaving(false);
+    }
   };
+
+  const isLoading = servicesState.status === "loading";
+  const hasError = servicesState.status === "failed";
 
   return (
     <section className={styles.wrapper}>
@@ -61,29 +145,26 @@ export default function ProviderServices() {
             Services list (select one or more)
           </span>
 
-          {ALL_SERVICES.map((s) => {
-            const isOn = selected.includes(s.key);
+          {services.map((service) => {
+            const isOn = selected.includes(service.id);
             return (
               <label
-                key={s.key}
+                key={service.id}
                 className={`${styles.card} ${isOn ? styles.on : ""}`}
               >
-                {/* Hidden checkbox keeps correct multi-select semantics & keyboard toggling */}
                 <input
                   type="checkbox"
                   className={styles.srOnly}
                   checked={isOn}
-                  onChange={() => toggle(s.key)}
+                  onChange={() => toggle(service.id)}
                   aria-checked={isOn}
-                  aria-label={s.label}
+                  aria-label={service.name}
                 />
 
                 <span className={styles.pillContent}>
-                  <span className={styles.emoji} aria-hidden="true">{s.emoji}</span>
-                  <span className={styles.title}>{s.label}</span>
+                  <span className={styles.title}>{service.name}</span>
                 </span>
 
-                {/* Radio-style visual indicator (circular) */}
                 <span
                   className={`${styles.radio} ${isOn ? styles.radioOn : ""}`}
                   aria-hidden="true"
@@ -93,9 +174,27 @@ export default function ProviderServices() {
           })}
         </div>
 
-        {submitted && selected.length === 0 && (
-          <p className={styles.error} aria-live="polite">Pick at least one service.</p>
-        )}
+        {isLoading ? (
+          <p className={styles.info}>Loading services…</p>
+        ) : null}
+
+        {!isLoading && servicesState.status === "succeeded" && services.length === 0 ? (
+          <p className={styles.info}>No services are currently available.</p>
+        ) : null}
+
+        {hasError ? (
+          <p className={styles.error} role="alert">
+            {servicesState.error ?? "Unable to load services. Please try again."}
+          </p>
+        ) : null}
+
+        {submitted &&
+          selected.length === 0 &&
+          servicesState.status === "succeeded" && (
+            <p className={styles.error} aria-live="polite">
+              Pick at least one service.
+            </p>
+          )}
 
         <div className={styles.actions}>
           <button type="button" className={styles.secondary} onClick={() => navigate(-1)}>
@@ -103,13 +202,24 @@ export default function ProviderServices() {
           </button>
           <button
             className={styles.primary}
-            style={{ background: colors.accent, color: colors.white, opacity: selected.length ? 1 : 0.6 }}
-            disabled={!selected.length}
+            style={{
+              background: colors.accent,
+              color: colors.white,
+              opacity: selected.length && !saving ? 1 : 0.6,
+            }}
+            disabled={!selected.length || saving}
             type="submit"
+            aria-disabled={!selected.length || saving}
           >
-            Finish
+            {saving ? "Submitting…" : "Finish"}
           </button>
         </div>
+
+        {error ? (
+          <p className={styles.error} role="alert">
+            {error}
+          </p>
+        ) : null}
       </form>
     </section>
   );

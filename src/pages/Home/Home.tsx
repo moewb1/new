@@ -617,13 +617,22 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
 
   // Logout
   const logout = () => {
+    let profileEmail: string | undefined;
+    let profileRole: "provider" | "consumer" | undefined;
     try {
-      // Clear common auth/profile keys safely
-      ["profile", "auth.token", "auth.refresh"].forEach((k) => localStorage.removeItem(k));
-    } catch {}
+      const stored = JSON.parse(localStorage.getItem("profile") || "{}") as Record<string, unknown>;
+      if (typeof stored?.email === "string") profileEmail = stored.email;
+      if (stored?.role === "provider" || stored?.role === "consumer") profileRole = stored.role;
+    } catch {
+      /* ignore storage parsing issues */
+    }
+    sessionStorage.setItem("onboardingFlow", "logout");
+    const params = new URLSearchParams({ flow: "logout" });
+    if (profileEmail) params.set("email", profileEmail);
+    if (profileRole) params.set("role", profileRole);
     setProfileDrawerOpen(false);
     setNotifDrawerOpen(false);
-    navigate("/", { replace: true });
+    navigate(`/auth/otp?${params.toString()}`);
   };
 
   // Close drawers on ESC

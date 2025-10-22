@@ -21,6 +21,8 @@ import {
 import AuthGateModal from "@/components/AuthGateModal/AuthGateModal";
 import { useAuthState } from "@/hooks/useAuthState";
 import { isGuestConsumer } from "@/utils/auth";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { fetchLanguages } from "@/store/slices/metaSlice";
 
 import markerIcon2xUrl from "leaflet/dist/images/marker-icon-2x.png";
 import markerIconUrl from "leaflet/dist/images/marker-icon.png";
@@ -66,17 +68,6 @@ const SERVICE_OPTIONS: ServiceOption[] = [
 
 const COUNTRY_META = listCountryMeta();
 const COUNTRY_OPTIONS: Option[] = COUNTRY_META.map((c) => ({ value: c.code, label: c.name }));
-
-const LANGUAGE_OPTIONS: Option[] = [
-  { value: "Arabic", label: "Arabic" },
-  { value: "English", label: "English" },
-  { value: "French", label: "French" },
-  { value: "Hindi", label: "Hindi" },
-  { value: "Malayalam", label: "Malayalam" },
-  { value: "Tagalog", label: "Tagalog" },
-  { value: "Urdu", label: "Urdu" },
-];
-
 const defaultCoords = { latitude: 25.2048, longitude: 55.2708 };
 
 const DEFAULT_START_TIME = "09:00";
@@ -253,6 +244,14 @@ export default function PostJob() {
   const guestConsumer = isGuestConsumer(auth);
   const portalTarget = typeof document !== "undefined" ? document.body : undefined;
   const todayISO = useMemo(() => formatYYYYMMDDLocal(new Date()), []);
+  const dispatch = useAppDispatch();
+  const languagesState = useAppSelector((state) => state.meta.languages);
+  const languageOptions = useMemo<Option[]>(() => {
+    return (languagesState.data || []).map((lang) => {
+      const label = lang.name || lang.code || `Language ${lang.id}`;
+      return { value: label, label };
+    });
+  }, [languagesState.data]);
 
   // Basics
   const [title, setTitle] = useState("");
@@ -293,6 +292,12 @@ export default function PostJob() {
   const [submitted, setSubmitted] = useState(false);
   const [guestPromptOpen, setGuestPromptOpen] = useState(false);
   const [mapReady, setMapReady] = useState(false);
+
+  useEffect(() => {
+    if (languagesState.status === "idle") {
+      dispatch(fetchLanguages());
+    }
+  }, [dispatch, languagesState.status]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -680,10 +685,16 @@ export default function PostJob() {
               styles={languageSelectStyles}
               isMulti
               closeMenuOnSelect={false}
-              options={LANGUAGE_OPTIONS}
+              options={languageOptions}
               value={preferredLanguages}
-              placeholder="Preferred communication languages"
+              placeholder={
+                languagesState.status === "loading"
+                  ? "Loading languages…"
+                  : "Preferred communication languages"
+              }
               onChange={(values) => setPreferredLanguages((values || []) as Option[])}
+              isLoading={languagesState.status === "loading"}
+              isDisabled={languageOptions.length === 0}
               menuPortalTarget={portalTarget}
               menuPosition="fixed"
             />
