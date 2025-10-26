@@ -1,31 +1,59 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Select, { type StylesConfig } from "react-select";
 import styles from "./EditProfile.module.css";
 import colors from "@/styles/colors";
-import { createOrUpdateProfile } from "@/services/profileService";
-import { buildProfileSubmissionPayload } from "@/utils/profileSubmission";
+import {
+  createOrUpdateProfile,
+  fetchProfile,
+  type CreateProfileRequest,
+  type PersonType,
+} from "@/services/profileService";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { fetchLanguages } from "@/store/slices/metaSlice";
+import {
+  fetchLanguages,
+  fetchNationalities,
+  fetchServices,
+  type Language,
+  type Nationality,
+  type Service,
+} from "@/store/slices/metaSlice";
+import { useProfile } from "@/hooks/useProfile";
 
-type Profile = {
-  role?: "provider" | "consumer";
-  firstName?: string;
-  lastName?: string;
-  name?: string;
-  phone?: string;
-  email?: string;
-  profilePhoto?: string;
-  fullBodyPhoto?: string;
-  standingPhoto?: string;
-  sittingPhoto?: string;
-  galleryPhotos?: string[];
-  preferredLanguage?: string;
-  preferredLanguageIds?: number[];
+type Option = { value: number; label: string };
+type CountryOption = Option & { code: string };
+
+const baseSelectControl = (base: any) => ({
+  ...base,
+  borderRadius: 12,
+  borderColor: "rgba(0,0,0,0.16)",
+  minHeight: 44,
+  fontWeight: 600,
+  ":hover": { borderColor: "rgba(0,0,0,0.3)" },
+});
+
+const selectStyles: StylesConfig<Option, false> = {
+  control: baseSelectControl,
 };
 
-const MAX_GALLERY_PHOTOS = 12;
+const countrySelectStyles: StylesConfig<CountryOption, false> = {
+  control: baseSelectControl,
+};
 
-async function fileToDataUrl(file: File): Promise<string | null> {
+const multiSelectStyles: StylesConfig<Option, true> = {
+  control: baseSelectControl,
+  valueContainer: (base) => ({ ...base, flexWrap: "wrap", gap: 4 }),
+  multiValue: (base) => ({
+    ...base,
+    borderRadius: 10,
+    background: "rgba(169,174,155,0.14)",
+    border: "1px solid rgba(169,174,155,0.35)",
+    fontWeight: 600,
+  }),
+};
+
+async function fileToDataUrl(file: File | null): Promise<string | null> {
+  if (!file) return null;
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
@@ -34,198 +62,222 @@ async function fileToDataUrl(file: File): Promise<string | null> {
   });
 }
 
-async function filesToDataUrls(files: File[]): Promise<string[]> {
-  if (!files.length) return [];
-  const urls = await Promise.all(files.map((file) => fileToDataUrl(file)));
-  return urls.filter((url): url is string => Boolean(url));
+function parseFloatOrNull(value: string): number | null {
+  if (!value.trim()) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 export default function EditProfile() {
   const navigate = useNavigate();
-
-  const storedProfile = useMemo<Profile>(() => {
-    try { return JSON.parse(localStorage.getItem("profile") || "{}"); }
-    catch { return {}; }
-  }, []);
-
-  const storedIdentity = useMemo(() => {
-    try { return JSON.parse(localStorage.getItem("kyc.identity") || "{}"); }
-    catch { return {}; }
-  }, []);
-
   const dispatch = useAppDispatch();
+
+  const { profile, status: profileStatus, error: profileError, refresh } = useProfile();
+
+  const servicesState = useAppSelector((state) => state.meta.services);
   const languagesState = useAppSelector((state) => state.meta.languages);
-  const languageOptions = useMemo(() => {
-    return (languagesState.data || []).map((lang) => ({
-      id: lang.id,
-      label: lang.name || lang.code || `Language ${lang.id}`,
-    }));
-  }, [languagesState.data]);
-  const storedProfileLanguageIds = Array.isArray(storedProfile.preferredLanguageIds)
-    ? storedProfile.preferredLanguageIds
-    : [];
-  const storedIdentityLanguageIds = Array.isArray(
-    (storedIdentity as Record<string, unknown>).preferredLanguageIds
-  )
-    ? ((storedIdentity as Record<string, unknown>).preferredLanguageIds as number[])
-    : [];
-  const storedPreferredLanguageName = useMemo(() => {
-    const profileLang = (storedProfile.preferredLanguage || "") as string;
-    const identityLang = (storedIdentity.preferredLanguage || "") as string;
-    return (profileLang || identityLang || "").trim();
-  }, [storedIdentity.preferredLanguage, storedProfile.preferredLanguage]);
-  const initialPreferredLanguageId = useMemo(() => {
-    const fromProfile = storedProfileLanguageIds.find((id) => typeof id === "number");
-    if (typeof fromProfile === "number") return fromProfile;
-    const fromIdentity = storedIdentityLanguageIds.find((id) => typeof id === "number");
-    return typeof fromIdentity === "number" ? fromIdentity : null;
-  }, [storedIdentityLanguageIds, storedProfileLanguageIds]);
+  const nationalitiesState = useAppSelector((state) => state.meta.nationalities);
 
-  const role = storedProfile.role;
-  const isProvider = role === "provider";
+  useEffect(() => {
+    if (servicesState.status === "idle") dispatch(fetchServices());
+    if (languagesState.status === "idle") dispatch(fetchLanguages());
+    if (nationalitiesState.status === "idle") dispatch(fetchNationalities());
+  }, [dispatch, servicesState.status, languagesState.status, nationalitiesState.status]);
 
-  const [firstName, setFirstName] = useState(storedProfile.firstName || "");
-  const [lastName, setLastName]   = useState(storedProfile.lastName || "");
-  const [phone, setPhone]         = useState(storedProfile.phone || storedIdentity.phone || "");
-  const [email, setEmail]         = useState(storedProfile.email || "");
-  const [profilePhoto, setProfilePhoto] = useState<string | undefined>(storedProfile.profilePhoto);
-  const [fullBodyPhoto, setFullBodyPhoto] = useState<string | undefined>(storedProfile.fullBodyPhoto);
-  const [sittingPhoto, setSittingPhoto] = useState<string | undefined>(storedProfile.sittingPhoto);
-  const [galleryPhotos, setGalleryPhotos] = useState<string[]>(
-    Array.isArray(storedProfile.galleryPhotos) ? storedProfile.galleryPhotos : []
+  const serviceOptions = useMemo<Option[]>(
+    () => (servicesState.data || []).map((service) => ({ value: service.id, label: service.name })),
+    [servicesState.data]
   );
-  const [preferredLanguageId, setPreferredLanguageId] = useState<number | null>(
-    initialPreferredLanguageId
+
+  const languageOptions = useMemo<Option[]>(
+    () =>
+      (languagesState.data || []).map((language: Language) => ({
+        value: language.id,
+        label: language.name || language.code || `Language ${language.id}`,
+      })),
+    [languagesState.data]
   );
-  const [submitted, setSubmitted] = useState(false);
-  const [saving, setSaving] = useState(false);
+
+  const nationalityOptions = useMemo<CountryOption[]>(
+    () =>
+      (nationalitiesState.data || []).map((nat: Nationality) => ({
+        value: nat.id,
+        label: nat.name,
+        code: nat.code || "",
+      })),
+    [nationalitiesState.data]
+  );
+
+  const [role, setRole] = useState<"provider" | "consumer">("consumer");
+  const [personType, setPersonType] = useState<PersonType>("individual");
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [dialCode, setDialCode] = useState("+971");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [dob, setDob] = useState<string>("");
+  const [bio, setBio] = useState("");
+  const [nationalityId, setNationalityId] = useState<number | null>(null);
+
+  const [addressLine1, setAddressLine1] = useState("");
+  const [addressLine2, setAddressLine2] = useState("");
+  const [addressCity, setAddressCity] = useState("");
+  const [addressStateField, setAddressStateField] = useState("");
+  const [addressBuilding, setAddressBuilding] = useState("");
+  const [addressApartment, setAddressApartment] = useState("");
+  const [addressCountryCode, setAddressCountryCode] = useState("AE");
+  const [addressPostalCode, setAddressPostalCode] = useState("");
+  const [addressLatitude, setAddressLatitude] = useState("");
+  const [addressLongitude, setAddressLongitude] = useState("");
+
+  const [iban, setIban] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [bankAccountHolder, setBankAccountHolder] = useState("");
+
+  const [selectedServices, setSelectedServices] = useState<Option[]>([]);
+  const [selectedLanguages, setSelectedLanguages] = useState<Option[]>([]);
+
+  const [kycDocType, setKycDocType] = useState<string>("personal_id");
+  const [kycExistingName, setKycExistingName] = useState<string | null>(null);
+  const [kycFile, setKycFile] = useState<File | null>(null);
+
+  const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(null);
+  const [profilePictureFile, setProfilePictureFile] = useState<File | null>(null);
+
+  const [standingPreview, setStandingPreview] = useState<string | null>(null);
+  const [standingFile, setStandingFile] = useState<File | null>(null);
+
+  const [sittingPreview, setSittingPreview] = useState<string | null>(null);
+  const [sittingFile, setSittingFile] = useState<File | null>(null);
+
+  const [galleryPhotos, setGalleryPhotos] = useState<string[]>([]);
   const [galleryLimitMessage, setGalleryLimitMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    // hydration for "name" preview if only "name" existed
-    if (!firstName && !lastName && storedProfile.name) {
-      const [fn, ...rest] = storedProfile.name.split(" ");
-      setFirstName(fn || "");
-      setLastName(rest.join(" ").trim());
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const isProvider = role === "provider";
 
   useEffect(() => {
-    if (languagesState.status === "idle") {
-      dispatch(fetchLanguages());
-    }
-  }, [dispatch, languagesState.status]);
+    if (!profile) return;
+    const { user } = profile;
 
-  useEffect(() => {
-    if (
-      typeof preferredLanguageId !== "number" &&
-      languageOptions.length > 0 &&
-      storedPreferredLanguageName
-    ) {
-      const match = languageOptions.find(
-        (opt) => opt.label.toLowerCase() === storedPreferredLanguageName.toLowerCase()
+    setRole((user.role as "provider" | "consumer") || "consumer");
+    setPersonType((user.type as PersonType) || "individual");
+
+    setFirstName(user.fname || "");
+    setLastName(user.lname || "");
+    setEmail(user.email || "");
+    setDialCode(user.dial_code || "+971");
+    setPhoneNumber(user.phone_number || "");
+    setDob(user.dob || "");
+    setBio(user.bio || "");
+    setNationalityId(user.nationality?.id ?? null);
+
+    const primaryAddress = user.addresses?.[0];
+    if (primaryAddress) {
+      setAddressLine1(primaryAddress.line1 || "");
+      setAddressLine2(primaryAddress.line2 || "");
+      setAddressCity(primaryAddress.city || "");
+      setAddressStateField(primaryAddress.state || "");
+      setAddressBuilding(primaryAddress.building || "");
+      setAddressApartment(primaryAddress.apartment || "");
+      setAddressCountryCode(primaryAddress.country_code || "AE");
+      setAddressPostalCode(primaryAddress.postal_code || "");
+      setAddressLatitude(primaryAddress.latitude ? String(primaryAddress.latitude) : "");
+      setAddressLongitude(primaryAddress.longitude ? String(primaryAddress.longitude) : "");
+    }
+
+    if (user.bank_account) {
+      setIban(user.bank_account.iban || "");
+      setBankName(user.bank_account.bank_name || "");
+      setBankAccountHolder(user.bank_account.account_holder_name || "");
+    } else {
+      setIban("");
+      setBankName("");
+      setBankAccountHolder("");
+    }
+
+    if (Array.isArray(user.language_ids) && user.language_ids.length > 0) {
+      setSelectedLanguages(
+        (languageOptions || []).filter((opt) => user.language_ids?.includes(opt.value))
       );
-      if (match) {
-        setPreferredLanguageId(match.id);
-      }
+    } else if (languageOptions.length > 0) {
+      setSelectedLanguages([]);
     }
-  }, [languageOptions, preferredLanguageId, storedPreferredLanguageName]);
 
-  const emailOk = useMemo(() => {
-    if (!email) return false;
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-  }, [email]);
+    if (Array.isArray(user.service_ids) && user.service_ids.length > 0) {
+      setSelectedServices(
+        (serviceOptions || []).filter((opt) => user.service_ids?.includes(opt.value))
+      );
+    } else {
+      setSelectedServices([]);
+    }
 
-  const phoneOk = useMemo(() => {
-    if (!phone) return false;
-    // Simple sanity check (allow +, digits, spaces, dashes, parentheses)
-    const raw = phone.replace(/[^\d+]/g, "");
-    return /^\+?\d{7,15}$/.test(raw);
-  }, [phone]);
+    const profileImage =
+      user.images?.find((img) => img.slug === "profile_picture") ?? user.images?.[0];
+    setProfilePicturePreview(profileImage?.normal_url || null);
+    setProfilePictureFile(null);
 
-  const firstOk = (firstName || "").trim().length >= 2;
-  const lastOk  = (lastName || "").trim().length >= 2;
-  const profilePhotoOk = Boolean(profilePhoto);
-  const fullBodyOk = isProvider ? Boolean(fullBodyPhoto) : true;
-  const sittingPhotoOk = isProvider ? Boolean(sittingPhoto) : true;
-  const languageOk = isProvider ? typeof preferredLanguageId === "number" : true;
-  const galleryLimitOk = galleryPhotos.length <= MAX_GALLERY_PHOTOS;
-  const allOk =
-    firstOk &&
-    lastOk &&
-    phoneOk &&
-    emailOk &&
-    profilePhotoOk &&
-    fullBodyOk &&
-    sittingPhotoOk &&
-    languageOk &&
-    galleryLimitOk;
+    const standingImage = user.images?.find((img) => img.slug === "standing_photo");
+    setStandingPreview(standingImage?.normal_url || null);
+    setStandingFile(null);
 
-  const handleProfilePhotoChange: React.ChangeEventHandler<HTMLInputElement> = async (event) => {
-    const fileList = event.target.files;
-    const file = fileList && fileList[0];
+    const sittingImage = user.images?.find((img) => img.slug === "sitting_photo");
+    setSittingPreview(sittingImage?.normal_url || null);
+    setSittingFile(null);
+
+    if (Array.isArray(user.kyc_documents) && user.kyc_documents.length > 0) {
+      const doc = user.kyc_documents[0];
+      setKycDocType(doc.doc_type || "personal_id");
+      const path = doc.path || "";
+      const name = path.split("/").pop() || "document";
+      setKycExistingName(name);
+    } else {
+      setKycDocType("personal_id");
+      setKycExistingName(null);
+    }
+
+    setGalleryPhotos([]);
+    setGalleryLimitMessage(null);
+  }, [profile, languageOptions, serviceOptions]);
+
+  const handleProfilePictureChange: React.ChangeEventHandler<HTMLInputElement> = async (event) => {
+    const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
-    try {
-      const url = await fileToDataUrl(file);
-      if (url) {
-        setProfilePhoto(url);
-      }
-    } catch (error) {
-      console.error("Failed to read profile photo", error);
-      if (typeof window !== "undefined") {
-        window.alert("We couldn't read that photo. Please try another file.");
-      }
-    }
+    const preview = await fileToDataUrl(file);
+    setProfilePictureFile(file);
+    setProfilePicturePreview(preview);
   };
 
-  const clearProfilePhoto = () => {
-    setProfilePhoto(undefined);
-  };
-
-  const handleFullBodyPhotoChange: React.ChangeEventHandler<HTMLInputElement> = async (event) => {
-    const fileList = event.target.files;
-    const file = fileList && fileList[0];
+  const handleStandingChange: React.ChangeEventHandler<HTMLInputElement> = async (event) => {
+    const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
-    try {
-      const url = await fileToDataUrl(file);
-      if (url) {
-        setFullBodyPhoto(url);
-      }
-    } catch (error) {
-      console.error("Failed to read full body photo", error);
-      if (typeof window !== "undefined") {
-        window.alert("We couldn't read that photo. Please try another file.");
-      }
-    }
+    const preview = await fileToDataUrl(file);
+    setStandingFile(file);
+    setStandingPreview(preview);
   };
 
-  const clearFullBodyPhoto = () => {
-    setFullBodyPhoto(undefined);
-  };
-
-  const handleSittingPhotoChange: React.ChangeEventHandler<HTMLInputElement> = async (event) => {
-    const fileList = event.target.files;
-    const file = fileList && fileList[0];
+  const handleSittingChange: React.ChangeEventHandler<HTMLInputElement> = async (event) => {
+    const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
-    try {
-      const url = await fileToDataUrl(file);
-      if (url) {
-        setSittingPhoto(url);
-      }
-    } catch (error) {
-      console.error("Failed to read sitting photo", error);
-      if (typeof window !== "undefined") {
-        window.alert("We couldn't read that photo. Please try another file.");
-      }
-    }
+    const preview = await fileToDataUrl(file);
+    setSittingFile(file);
+    setSittingPreview(preview);
   };
 
-  const clearSittingPhoto = () => {
-    setSittingPhoto(undefined);
+  const handleKycFileChange: React.ChangeEventHandler<HTMLInputElement> = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setKycFile(file);
+    setKycExistingName(file.name);
   };
 
   const handleGalleryChange: React.ChangeEventHandler<HTMLInputElement> = async (event) => {
@@ -233,6 +285,7 @@ export default function EditProfile() {
     event.target.value = "";
     if (!files.length) return;
 
+    const MAX_GALLERY_PHOTOS = 12;
     const available = Math.max(0, MAX_GALLERY_PHOTOS - galleryPhotos.length);
     if (available <= 0) {
       setGalleryLimitMessage(`You can keep up to ${MAX_GALLERY_PHOTOS} photos.`);
@@ -241,29 +294,20 @@ export default function EditProfile() {
 
     const selected = files.slice(0, available);
     if (selected.length < files.length) {
-      setGalleryLimitMessage(`Only the first ${selected.length} photo${selected.length === 1 ? "" : "s"} were added (max ${MAX_GALLERY_PHOTOS}).`);
+      setGalleryLimitMessage(
+        `Only the first ${selected.length} photo${selected.length === 1 ? "" : "s"} were added (max ${MAX_GALLERY_PHOTOS}).`
+      );
     } else {
       setGalleryLimitMessage(null);
     }
 
     try {
-      const urls = await filesToDataUrls(selected);
-      if (urls.length) {
-        setGalleryPhotos((prev) => {
-          const next = [...prev];
-          urls.forEach((url) => {
-            if (next.length < MAX_GALLERY_PHOTOS && !next.includes(url)) {
-              next.push(url);
-            }
-          });
-          return next;
-        });
-      }
+      const urls = await Promise.all(selected.map((file) => fileToDataUrl(file)));
+      const filtered = urls.filter((url): url is string => Boolean(url));
+      setGalleryPhotos((prev) => [...prev, ...filtered]);
     } catch (error) {
       console.error("Failed to add gallery photos", error);
-      if (typeof window !== "undefined") {
-        window.alert("We couldn't add one of the photos. Please try again.");
-      }
+      window.alert("We couldn't add one of the photos. Please try again.");
     }
   };
 
@@ -272,337 +316,657 @@ export default function EditProfile() {
     setGalleryLimitMessage(null);
   };
 
-  const onSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const validate = (): boolean => {
+    if (!firstName.trim() || !lastName.trim()) return false;
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return false;
+    if (!dialCode.trim() || !phoneNumber.trim()) return false;
+    if (!addressLine1.trim()) return false;
+    if (!nationalityId) return false;
+    if (isProvider && selectedLanguages.length === 0) return false;
+    if (isProvider && selectedServices.length === 0) return false;
+    if (isProvider && (!standingPreview && !standingFile)) return false;
+    if (isProvider && (!sittingPreview && !sittingFile)) return false;
+    return true;
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setSubmitted(true);
-    if (!allOk) return;
+    setSuccessMessage(null);
+    setSubmitError(null);
+    if (!validate()) return;
 
-    setSaving(true);
+    const payload: CreateProfileRequest = {
+      type: isProvider ? "provider" : "consumer",
+      profile: {
+        fname: firstName.trim(),
+        lname: lastName.trim(),
+        dob: dob || "",
+        email: email.trim(),
+        dial_code: dialCode.trim(),
+        phone_number: phoneNumber.trim(),
+        type: personType,
+        bio: bio.trim() || null,
+        nationality_id: nationalityId ?? 0,
+      },
+      address: {
+        line1: addressLine1.trim(),
+        line2: addressLine2.trim() || null,
+        city: addressCity.trim(),
+        state: addressStateField.trim() || null,
+        building: addressBuilding.trim() || null,
+        apartment: addressApartment.trim() || null,
+        country_code: addressCountryCode.trim() || "AE",
+        postal_code: addressPostalCode.trim() || null,
+        latitude: parseFloatOrNull(addressLatitude),
+        longitude: parseFloatOrNull(addressLongitude),
+        active: 1,
+      },
+      kyc_doc_type: kycDocType || "personal_id",
+    };
+
+    const languageIds = selectedLanguages.map((opt) => opt.value);
+    if (languageIds.length > 0) {
+      payload.language_ids = languageIds;
+    }
+
+    const serviceIds = selectedServices.map((opt) => opt.value);
+    if (serviceIds.length > 0) {
+      payload.service_ids = serviceIds;
+    }
+
+    if (iban.trim() && bankName.trim() && bankAccountHolder.trim()) {
+      payload.bank_account = {
+        iban: iban.trim(),
+        bank_name: bankName.trim(),
+        account_holder_name: bankAccountHolder.trim(),
+      };
+    }
+
+    if (profilePictureFile) {
+      payload.profile_picture_img = profilePictureFile;
+    }
+    if (isProvider && standingFile) {
+      payload.standing_img = standingFile;
+    }
+    if (isProvider && sittingFile) {
+      payload.sitten_img = sittingFile;
+    }
+    if (kycFile) {
+      payload.kyc_document = kycFile;
+    }
+
+    setLoading(true);
     try {
-      const cleanFirst = firstName.trim();
-      const cleanLast = lastName.trim();
-      const cleanPhone = phone.trim();
-      const cleanEmail = email.trim();
-      const selectedLanguage =
-        languageOptions.find((opt) => opt.id === preferredLanguageId) || null;
-      const selectedLanguageLabel = selectedLanguage?.label?.trim() || "";
+      await createOrUpdateProfile(payload);
 
-      const next: Profile = {
-        ...storedProfile,
-        firstName: cleanFirst,
-        lastName: cleanLast,
-        name: `${cleanFirst} ${cleanLast}`.trim(),
-        phone: cleanPhone,
-        email: cleanEmail,
-        profilePhoto: profilePhoto,
-        fullBodyPhoto: isProvider ? fullBodyPhoto : storedProfile.fullBodyPhoto,
-        standingPhoto: isProvider ? fullBodyPhoto : storedProfile.standingPhoto,
-        sittingPhoto: isProvider ? sittingPhoto : storedProfile.sittingPhoto,
-        galleryPhotos: galleryPhotos.length ? galleryPhotos : undefined,
-        preferredLanguage: selectedLanguageLabel || undefined,
-        preferredLanguageIds: selectedLanguage ? [selectedLanguage.id] : undefined,
-      };
+      try {
+        const data = await fetchProfile();
+        const { user } = data;
 
-      localStorage.setItem("profile", JSON.stringify(next));
+        const nextProfile = {
+          id: user.id,
+          role: user.role ?? (isProvider ? "provider" : "consumer"),
+          firstName: user.fname,
+          lastName: user.lname,
+          email: user.email,
+          phone: `${user.dial_code || ""} ${user.phone_number || ""}`.trim(),
+          dialCode: user.dial_code,
+          phoneNumber: user.phone_number,
+          profilePhoto: profilePicturePreview,
+          standingPhoto: standingPreview,
+          sittingPhoto: sittingPreview,
+          preferredLanguageIds: payload.language_ids,
+        };
+        localStorage.setItem("profile", JSON.stringify(nextProfile));
 
-      const nextIdentity = {
-        ...storedIdentity,
-        phone: cleanPhone,
-        preferredLanguage: next.preferredLanguage || null,
-        preferredLanguageIds: next.preferredLanguageIds || [],
-        profilePhotoSet: Boolean(next.profilePhoto),
-        fullBodyPhotoSet: Boolean(next.fullBodyPhoto),
-        standingPhotoSet: Boolean(next.standingPhoto),
-        sittingPhotoSet: Boolean(next.sittingPhoto),
-        galleryCount: next.galleryPhotos?.length ?? 0,
-        savedAt: new Date().toISOString(),
-      };
-      localStorage.setItem("kyc.identity", JSON.stringify(nextIdentity));
+        const nextIdentity = {
+          phone: `${user.dial_code || ""}${user.phone_number || ""}`,
+          preferredLanguageIds: payload.language_ids ?? [],
+          preferredLanguages: selectedLanguages.map((opt) => opt.label),
+          nationalityId: nationalityId,
+          nationalityCode:
+            nationalityOptions.find((opt) => opt.value === nationalityId)?.code ?? null,
+          savedAt: new Date().toISOString(),
+        };
+        localStorage.setItem("kyc.identity", JSON.stringify(nextIdentity));
 
-      const payload = buildProfileSubmissionPayload({
-        requireMedia: true,
-      });
-      const response = await createOrUpdateProfile(payload);
-      if (response && response.success === false) {
-        throw new Error(response.message || "We couldn't update your profile on the server.");
+        if (payload.bank_account) {
+          localStorage.setItem(
+            "bank",
+            JSON.stringify({
+              ...payload.bank_account,
+              savedAt: new Date().toISOString(),
+            })
+          );
+        }
+      } catch {
+        // Ignore caching errors; not critical for profile update
       }
 
-      navigate("/home");
+      setSuccessMessage("Profile updated successfully.");
+      setSubmitted(false);
+      setKycFile(null);
+      setProfilePictureFile(null);
+      setStandingFile(null);
+      setSittingFile(null);
+      refresh();
     } catch (error) {
-      console.error("Failed to save profile", error);
-      if (typeof window !== "undefined") {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "We couldn't save your profile. Please try again.";
-        window.alert(message);
-      }
+      console.error("Failed to update profile", error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : "We couldn't update your profile. Please try again.";
+      setSubmitError(message);
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
+
+  if (!profile && (profileStatus === "idle" || profileStatus === "loading")) {
+    return (
+      <section className={styles.wrapper}>
+        <p className={styles.info}>Loading profile…</p>
+      </section>
+    );
+  }
+
+  if (profileError) {
+    return (
+      <section className={styles.wrapper}>
+        <p className={styles.error}>{profileError}</p>
+        <button className={styles.primary} onClick={() => refresh()}>
+          Retry
+        </button>
+      </section>
+    );
+  }
 
   return (
     <section className={styles.wrapper}>
       <header className={styles.header}>
-        <button className={styles.backBtn} onClick={() => navigate(-1)} aria-label="Back">←</button>
+        <button className={styles.backBtn} onClick={() => navigate(-1)} aria-label="Back">
+          ←
+        </button>
         <div>
           <h1 className={styles.h1}>Edit Profile</h1>
-          <p className={styles.sub}>Update your basic details. Changes reflect across the app.</p>
+          <p className={styles.sub}>Update your details and keep your account up to date.</p>
         </div>
       </header>
 
-      <div className={styles.grid}>
-        {/* Form */}
-        <form className={styles.card} onSubmit={onSave} noValidate>
-          <div className={styles.row}>
-            <label className={styles.label}>First name</label>
-            <input
-              className={`${styles.input} ${submitted && !firstOk ? styles.inputError : ""}`}
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              placeholder="e.g. Maya"
-              autoComplete="given-name"
-              required
-            />
-            {submitted && !firstOk && <p className={styles.error}>Enter at least 2 characters.</p>}
-          </div>
+      <form className={styles.card} onSubmit={handleSubmit} noValidate>
+        {successMessage ? <p className={styles.success}>{successMessage}</p> : null}
+        {submitError ? <p className={styles.error}>{submitError}</p> : null}
 
-          <div className={styles.row}>
-            <label className={styles.label}>Last name</label>
-            <input
-              className={`${styles.input} ${submitted && !lastOk ? styles.inputError : ""}`}
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              placeholder="e.g. Khalid"
-              autoComplete="family-name"
-              required
-            />
-            {submitted && !lastOk && <p className={styles.error}>Enter at least 2 characters.</p>}
-          </div>
-
-          <div className={styles.row}>
-            <label className={styles.label}>Mobile number</label>
-            <input
-              className={`${styles.input} ${submitted && !phoneOk ? styles.inputError : ""}`}
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+971 5X XXX XXXX"
-              inputMode="tel"
-              autoComplete="tel"
-              required
-            />
-            {submitted && !phoneOk && <p className={styles.error}>Enter a valid phone number.</p>}
-          </div>
-
-          <div className={styles.row}>
-            <label className={styles.label}>Email</label>
-            <input
-              className={`${styles.input} ${submitted && !emailOk ? styles.inputError : ""}`}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              type="email"
-              autoComplete="email"
-              required
-            />
-            {submitted && !emailOk && <p className={styles.error}>Enter a valid email address.</p>}
-          </div>
-
-          <div className={styles.row}>
-            <label className={styles.label}>Profile photo *</label>
-            <div className={styles.mediaRow}>
-              {profilePhoto ? (
-                <img src={profilePhoto} alt="Profile preview" className={styles.photoPreview} />
-              ) : (
-                <div className={styles.photoPlaceholder}>No photo</div>
-              )}
-              <div className={styles.mediaActions}>
-                <label className={styles.uploadBtn}>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleProfilePhotoChange}
-                    className={styles.fileInput}
-                  />
-                  {profilePhoto ? "Replace photo" : "Upload photo"}
-                </label>
-                {profilePhoto && (
-                  <button type="button" className={styles.linkAction} onClick={clearProfilePhoto}>
-                    Remove
-                  </button>
-                )}
-              </div>
-            </div>
-            <p className={styles.hint}>Use a clear headshot facing the camera.</p>
-            {submitted && !profilePhotoOk && <p className={styles.error}>Profile photo is required.</p>}
-          </div>
-
-          {isProvider && (
-            <>
-              <div className={styles.row}>
-                <label className={styles.label}>Standing photo *</label>
-                <div className={styles.mediaRow}>
-                  {fullBodyPhoto ? (
-                    <img src={fullBodyPhoto} alt="Standing photo preview" className={styles.photoPreview} />
-                  ) : (
-                    <div className={styles.photoPlaceholder}>No photo</div>
-                  )}
-                  <div className={styles.mediaActions}>
-                    <label className={styles.uploadBtn}>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFullBodyPhotoChange}
-                        className={styles.fileInput}
-                      />
-                      {fullBodyPhoto ? "Replace photo" : "Upload photo"}
-                    </label>
-                    {fullBodyPhoto && (
-                      <button type="button" className={styles.linkAction} onClick={clearFullBodyPhoto}>
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <p className={styles.hint}>Show a full-length standing photo so clients can see your presence.</p>
-                {submitted && !fullBodyOk && (
-                  <p className={styles.error}>Standing photo is required for providers.</p>
-                )}
-              </div>
-
-              <div className={styles.row}>
-                <label className={styles.label}>Sitting photo *</label>
-                <div className={styles.mediaRow}>
-                  {sittingPhoto ? (
-                    <img src={sittingPhoto} alt="Sitting photo preview" className={styles.photoPreview} />
-                  ) : (
-                    <div className={styles.photoPlaceholder}>No photo</div>
-                  )}
-                  <div className={styles.mediaActions}>
-                    <label className={styles.uploadBtn}>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleSittingPhotoChange}
-                        className={styles.fileInput}
-                      />
-                      {sittingPhoto ? "Replace photo" : "Upload photo"}
-                    </label>
-                    {sittingPhoto && (
-                      <button type="button" className={styles.linkAction} onClick={clearSittingPhoto}>
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <p className={styles.hint}>Provide a seated photo to support your verification.</p>
-                {submitted && !sittingPhotoOk && (
-                  <p className={styles.error}>Sitting photo is required for providers.</p>
-                )}
-              </div>
-            </>
-          )}
-
-          <div className={styles.row}>
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Personal information</h2>
+          <div className={styles.gridTwo}>
             <label className={styles.label}>
-              Preferred language{isProvider ? " *" : " (optional)"}
+              First name *
+              <input
+                className={`${styles.input} ${
+                  submitted && !firstName.trim() ? styles.inputError : ""
+                }`}
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                autoComplete="given-name"
+                required
+              />
             </label>
-            <select
-              className={`${styles.input} ${(isProvider && submitted && !languageOk) ? styles.inputError : ""}`}
-              value={typeof preferredLanguageId === "number" ? preferredLanguageId.toString() : ""}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (!value) {
-                  setPreferredLanguageId(null);
-                } else {
-                  setPreferredLanguageId(Number(value));
-                }
-              }}
-              disabled={languageOptions.length === 0}
-            >
-              <option value="">
-                {languagesState.status === "loading" ? "Loading languages…" : "Select language…"}
-              </option>
-              {languageOptions.map((lang) => (
-                <option key={lang.id} value={lang.id}>
-                  {lang.label}
-                </option>
-              ))}
-            </select>
-            {languagesState.status === "failed" ? (
-              <p className={styles.error}>Unable to load languages. Please try again shortly.</p>
-            ) : isProvider ? (
-              submitted && !languageOk ? (
-                <p className={styles.error}>Preferred language is required for providers.</p>
-              ) : (
-                <p className={styles.hint}>Clients will see this on your public profile.</p>
-              )
-            ) : (
-              <p className={styles.hint}>Optional: helps us communicate with you.</p>
-            )}
+            <label className={styles.label}>
+              Last name *
+              <input
+                className={`${styles.input} ${
+                  submitted && !lastName.trim() ? styles.inputError : ""
+                }`}
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                autoComplete="family-name"
+                required
+              />
+            </label>
           </div>
 
-          {isProvider && (
-            <div className={styles.row}>
-              <label className={styles.label}>Additional gallery (optional)</label>
-              <div className={styles.mediaRow}>
-                <div className={styles.galleryWrap}>
-                  {galleryPhotos.length === 0 ? (
-                    <div className={styles.photoPlaceholder}>No photos yet</div>
-                  ) : (
-                    <div className={styles.galleryGrid}>
-                      {galleryPhotos.map((photo, idx) => (
-                        <div key={`${photo.slice(0,20)}-${idx}`} className={styles.galleryItem}>
-                          <img src={photo} alt={`Gallery ${idx + 1}`} className={styles.galleryImg} />
-                          <button
-                            type="button"
-                            className={styles.galleryRemove}
-                            onClick={() => removeGalleryPhoto(idx)}
-                            aria-label="Remove photo"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+          <div className={styles.gridTwo}>
+            <label className={styles.label}>
+              Email *
+              <input
+                className={`${styles.input} ${
+                  submitted &&
+                  (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
+                    ? styles.inputError
+                    : ""
+                }`}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                required
+              />
+            </label>
+
+            <div className={styles.label}>
+              <span>Mobile *</span>
+              <div className={styles.phoneRow}>
+                <input
+                  className={`${styles.input} ${styles.dial}`}
+                  value={dialCode}
+                  onChange={(e) => setDialCode(e.target.value)}
+                />
+                <input
+                  className={`${styles.input} ${styles.phone}`}
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  autoComplete="tel"
+                />
+              </div>
+              {submitted && (!dialCode.trim() || !phoneNumber.trim()) ? (
+                <p className={styles.error}>Enter your dial code and phone number.</p>
+              ) : null}
+            </div>
+          </div>
+
+          <div className={styles.gridTwo}>
+            <label className={styles.label}>
+              Date of birth
+              <input
+                className={styles.input}
+                type="date"
+                value={dob}
+                onChange={(e) => setDob(e.target.value)}
+              />
+            </label>
+
+            <label className={styles.label}>
+              Account type
+              <div className={styles.segment}>
+                <button
+                  type="button"
+                  className={`${styles.segmentBtn} ${
+                    personType === "individual" ? styles.active : ""
+                  }`}
+                  onClick={() => setPersonType("individual")}
+                >
+                  Individual
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.segmentBtn} ${
+                    personType === "company" ? styles.active : ""
+                  }`}
+                  onClick={() => setPersonType("company")}
+                >
+                  Company
+                </button>
+              </div>
+            </label>
+          </div>
+
+          <label className={styles.label}>
+            Nationality *
+            <Select<CountryOption, false>
+              styles={countrySelectStyles}
+              options={nationalityOptions}
+              value={
+                nationalityId
+                  ? nationalityOptions.find((opt) => opt.value === nationalityId) || null
+                  : null
+              }
+              onChange={(option) => setNationalityId(option ? option.value : null)}
+              placeholder={
+                nationalitiesState.status === "loading" ? "Loading…" : "Select nationality"
+              }
+              isLoading={nationalitiesState.status === "loading"}
+              isDisabled={nationalityOptions.length === 0}
+            />
+            {submitted && !nationalityId ? (
+              <p className={styles.error}>Select your nationality.</p>
+            ) : null}
+          </label>
+
+          <label className={styles.label}>
+            Bio
+            <textarea
+              className={styles.textarea}
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              rows={4}
+              placeholder="Share a short summary about yourself."
+            />
+          </label>
+        </section>
+
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Address</h2>
+          <label className={styles.label}>
+            Address line 1 *
+            <input
+              className={`${styles.input} ${
+                submitted && !addressLine1.trim() ? styles.inputError : ""
+              }`}
+              value={addressLine1}
+              onChange={(e) => setAddressLine1(e.target.value)}
+              required
+            />
+          </label>
+
+          <label className={styles.label}>
+            Address line 2
+            <input
+              className={styles.input}
+              value={addressLine2}
+              onChange={(e) => setAddressLine2(e.target.value)}
+            />
+          </label>
+
+          <div className={styles.gridThree}>
+            <label className={styles.label}>
+              City
+              <input
+                className={styles.input}
+                value={addressCity}
+                onChange={(e) => setAddressCity(e.target.value)}
+              />
+            </label>
+            <label className={styles.label}>
+              State
+              <input
+                className={styles.input}
+                value={addressStateField}
+                onChange={(e) => setAddressStateField(e.target.value)}
+              />
+            </label>
+            <label className={styles.label}>
+              Postal code
+              <input
+                className={styles.input}
+                value={addressPostalCode}
+                onChange={(e) => setAddressPostalCode(e.target.value)}
+              />
+            </label>
+          </div>
+
+          <div className={styles.gridThree}>
+            <label className={styles.label}>
+              Building
+              <input
+                className={styles.input}
+                value={addressBuilding}
+                onChange={(e) => setAddressBuilding(e.target.value)}
+              />
+            </label>
+            <label className={styles.label}>
+              Apartment
+              <input
+                className={styles.input}
+                value={addressApartment}
+                onChange={(e) => setAddressApartment(e.target.value)}
+              />
+            </label>
+            <label className={styles.label}>
+              Country code
+              <input
+                className={styles.input}
+                value={addressCountryCode}
+                onChange={(e) => setAddressCountryCode(e.target.value.toUpperCase())}
+              />
+            </label>
+          </div>
+
+          <div className={styles.gridTwo}>
+            <label className={styles.label}>
+              Latitude
+              <input
+                className={styles.input}
+                value={addressLatitude}
+                onChange={(e) => setAddressLatitude(e.target.value)}
+              />
+            </label>
+            <label className={styles.label}>
+              Longitude
+              <input
+                className={styles.input}
+                value={addressLongitude}
+                onChange={(e) => setAddressLongitude(e.target.value)}
+              />
+            </label>
+          </div>
+        </section>
+
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Media & documents</h2>
+
+          <div className={styles.mediaRow}>
+            <label className={styles.label}>
+              Profile photo *
+              <div className={styles.mediaBlock}>
+                {profilePicturePreview ? (
+                  <img src={profilePicturePreview} alt="Profile preview" className={styles.photoPreview} />
+                ) : (
+                  <div className={styles.photoPlaceholder}>No photo</div>
+                )}
                 <div className={styles.mediaActions}>
                   <label className={styles.uploadBtn}>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleGalleryChange}
-                      className={styles.fileInput}
-                    />
-                    Add photos
+                    <input type="file" accept="image/*" onChange={handleProfilePictureChange} />
+                    {profilePicturePreview ? "Replace photo" : "Upload photo"}
                   </label>
-                  <span className={styles.hintSmall}>
-                    {galleryPhotos.length}/{MAX_GALLERY_PHOTOS} stored
-                  </span>
                 </div>
               </div>
-              {galleryLimitMessage ? <p className={styles.hint}>{galleryLimitMessage}</p> : null}
+              {submitted && !profilePicturePreview && !profilePictureFile ? (
+                <p className={styles.error}>Profile photo is required.</p>
+              ) : null}
+            </label>
+
+            {isProvider ? (
+              <>
+                <label className={styles.label}>
+                  Standing photo *
+                  <div className={styles.mediaBlock}>
+                    {standingPreview ? (
+                      <img src={standingPreview} alt="Standing preview" className={styles.photoPreview} />
+                    ) : (
+                      <div className={styles.photoPlaceholder}>No photo</div>
+                    )}
+                    <div className={styles.mediaActions}>
+                      <label className={styles.uploadBtn}>
+                        <input type="file" accept="image/*" onChange={handleStandingChange} />
+                        {standingPreview ? "Replace photo" : "Upload photo"}
+                      </label>
+                    </div>
+                  </div>
+                  {submitted && !standingPreview && !standingFile ? (
+                    <p className={styles.error}>Standing photo is required for providers.</p>
+                  ) : null}
+                </label>
+
+                <label className={styles.label}>
+                  Sitting photo *
+                  <div className={styles.mediaBlock}>
+                    {sittingPreview ? (
+                      <img src={sittingPreview} alt="Sitting preview" className={styles.photoPreview} />
+                    ) : (
+                      <div className={styles.photoPlaceholder}>No photo</div>
+                    )}
+                    <div className={styles.mediaActions}>
+                      <label className={styles.uploadBtn}>
+                        <input type="file" accept="image/*" onChange={handleSittingChange} />
+                        {sittingPreview ? "Replace photo" : "Upload photo"}
+                      </label>
+                    </div>
+                  </div>
+                  {submitted && !sittingPreview && !sittingFile ? (
+                    <p className={styles.error}>Sitting photo is required for providers.</p>
+                  ) : null}
+                </label>
+              </>
+            ) : null}
+          </div>
+
+          <label className={styles.label}>
+            KYC document ({kycDocType})
+            <div className={styles.fileRow}>
+              <label className={styles.uploadBtn}>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,application/pdf"
+                  onChange={handleKycFileChange}
+                />
+                Upload document
+              </label>
+              {kycExistingName ? <span className={styles.fileName}>{kycExistingName}</span> : null}
             </div>
+          </label>
+        </section>
+
+        {isProvider ? (
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Provider details</h2>
+
+            <label className={styles.label}>
+              Preferred languages *
+              <Select<Option, true>
+                styles={multiSelectStyles}
+                isMulti
+                options={languageOptions}
+                value={selectedLanguages}
+                onChange={(options) =>
+                  setSelectedLanguages(options ? options.map((opt) => ({ ...opt })) : [])
+                }
+                placeholder={
+                  languagesState.status === "loading"
+                    ? "Loading languages…"
+                    : "Select preferred languages"
+                }
+                isLoading={languagesState.status === "loading"}
+                isDisabled={languageOptions.length === 0}
+              />
+              {submitted && selectedLanguages.length === 0 ? (
+                <p className={styles.error}>Select at least one language.</p>
+              ) : null}
+            </label>
+
+            <label className={styles.label}>
+              Services *
+              <Select<Option, true>
+                styles={multiSelectStyles}
+                isMulti
+                options={serviceOptions}
+                value={selectedServices}
+                onChange={(options) =>
+                  setSelectedServices(options ? options.map((opt) => ({ ...opt })) : [])
+                }
+                placeholder={
+                  servicesState.status === "loading" ? "Loading services…" : "Select services"
+                }
+                isLoading={servicesState.status === "loading"}
+                isDisabled={serviceOptions.length === 0}
+              />
+              {submitted && selectedServices.length === 0 ? (
+                <p className={styles.error}>Select at least one service.</p>
+              ) : null}
+            </label>
+          </section>
+        ) : (
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Languages</h2>
+            <label className={styles.label}>
+              Preferred languages
+              <Select<Option, true>
+                styles={multiSelectStyles}
+                isMulti
+                options={languageOptions}
+                value={selectedLanguages}
+                onChange={(options) =>
+                  setSelectedLanguages(options ? options.map((opt) => ({ ...opt })) : [])
+                }
+                placeholder={
+                  languagesState.status === "loading"
+                    ? "Loading languages…"
+                    : "Select preferred languages"
+                }
+                isLoading={languagesState.status === "loading"}
+                isDisabled={languageOptions.length === 0}
+              />
+            </label>
+          </section>
+        )}
+
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Bank details</h2>
+          <div className={styles.gridThree}>
+            <label className={styles.label}>
+              IBAN
+              <input
+                className={styles.input}
+                value={iban}
+                onChange={(e) => setIban(e.target.value)}
+              />
+            </label>
+            <label className={styles.label}>
+              Bank name
+              <input
+                className={styles.input}
+                value={bankName}
+                onChange={(e) => setBankName(e.target.value)}
+              />
+            </label>
+            <label className={styles.label}>
+              Account holder
+              <input
+                className={styles.input}
+                value={bankAccountHolder}
+                onChange={(e) => setBankAccountHolder(e.target.value)}
+              />
+            </label>
+          </div>
+          <p className={styles.hint}>
+            Bank details are optional. Provide them if you’d like to receive payouts.
+          </p>
+        </section>
+
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Gallery</h2>
+          <label className={styles.label}>
+            Add gallery photos (optional)
+            <input type="file" accept="image/*" multiple onChange={handleGalleryChange} />
+          </label>
+          {galleryLimitMessage ? (
+            <p className={styles.error}>{galleryLimitMessage}</p>
+          ) : (
+            <p className={styles.hint}>Up to 12 photos to showcase your work.</p>
           )}
 
-          <div className={styles.actions}>
-            <button type="button" className={styles.secondary} onClick={() => navigate("/home")}>
-              Cancel
-            </button>
-            <button
-              className={styles.primary}
-              style={{ background: colors.accent, color: colors.white, opacity: allOk && !saving ? 1 : 0.6 }}
-              disabled={!allOk || saving}
-              type="submit"
-            >
-              {saving ? "Saving…" : "Save changes"}
-            </button>
+          <div className={styles.galleryGrid}>
+            {galleryPhotos.map((photo, index) => (
+              <div key={`${photo}-${index}`} className={styles.galleryItem}>
+                <img src={photo} alt={`Gallery ${index + 1}`} className={styles.galleryImg} />
+                <button
+                  type="button"
+                  className={styles.galleryRemove}
+                  onClick={() => removeGalleryPhoto(index)}
+                  aria-label="Remove photo"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
           </div>
-        </form>
-      </div>
+        </section>
+
+        <div className={styles.actions}>
+          <button type="button" className={styles.secondary} onClick={() => navigate(-1)}>
+            Cancel
+          </button>
+          <button
+            className={styles.primary}
+            type="submit"
+            disabled={loading}
+            style={{ background: colors.accent, color: colors.white, opacity: loading ? 0.6 : 1 }}
+          >
+            {loading ? "Saving…" : "Save changes"}
+          </button>
+        </div>
+      </form>
     </section>
   );
 }

@@ -96,6 +96,8 @@ export function clearAuthState(): void {
   if (!isBrowser) return;
   try {
     window.localStorage.removeItem(AUTH_KEY);
+    window.localStorage.removeItem("auth.token");
+    window.localStorage.removeItem("auth.refresh");
   } catch {
     /* ignore */
   }

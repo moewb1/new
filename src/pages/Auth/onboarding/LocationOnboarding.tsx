@@ -11,6 +11,7 @@ import {
 } from "react-leaflet";
 import * as L from "leaflet";
 import colors from "@/styles/colors";
+import { useRedirectIfAuthenticated } from "@/hooks/useRedirectIfAuthenticated";
 
 // ---- Marker icon fix for bundlers ----
 const DefaultIcon = L.icon({
@@ -131,6 +132,7 @@ function ClickToSetMarker({
 }
 
 export default function LocationOnboarding() {
+  useRedirectIfAuthenticated("/home");
   const navigate = useNavigate();
   const mapRef = useRef<L.Map | null>(null);
   const rafRef = useRef<number | null>(null);

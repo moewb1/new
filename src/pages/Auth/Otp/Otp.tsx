@@ -1,7 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useRedirectIfAuthenticated } from "@/hooks/useRedirectIfAuthenticated";
 import styles from "./Otp.module.css"; // ✅ match the file name's case
 import colors from "@/styles/colors";
+import { persistAuthenticatedSession } from "@/utils/authSession";
+import { clearAuthState } from "@/utils/auth";
 // ✅ type-only import for SlotProps (with verbatimModuleSyntax)
 import { OTPInput, REGEXP_ONLY_DIGITS, type SlotProps } from "input-otp";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -21,6 +24,17 @@ export default function Otp() {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const flowParam = (search.get("flow") || "").toLowerCase().trim();
+  const flow = (flowParam || sessionStorage.getItem("onboardingFlow") || "login")
+    .toLowerCase()
+    .trim();
+  const roleParam = search.get("role");
+  const normalisedRole = roleParam === "provider" || roleParam === "consumer" ? roleParam : undefined;
+
+  useRedirectIfAuthenticated(flow === "logout" ? null : "/home");
+  useEffect(() => {
+    console.log("[Otp] active flow:", flow);
+  }, [flow]);
 
   const [otp, setOtp] = useState("");
   const [secondsLeft, setSecondsLeft] = useState(60);
@@ -80,11 +94,6 @@ export default function Otp() {
     return `${m}:${s}`;
   }, [secondsLeft]);
 
-  const flowParam = (search.get("flow") || "").toLowerCase().trim();
-  const flow = flowParam || (sessionStorage.getItem("onboardingFlow") || "login").toLowerCase().trim();
-  const roleParam = search.get("role"); // "provider" | "consumer" | null
-  const normalisedRole = (roleParam === "provider" || roleParam === "consumer") ? roleParam : undefined;
-
   const isSignupFlow = flow === "signup";
   const isLoginFlow = flow === "login";
   const isLogoutFlow = flow === "logout";
@@ -123,23 +132,16 @@ export default function Otp() {
       );
       if (!verifyOtpThunk.fulfilled.match(result)) return;
 
-      localStorage.setItem(
-        "auth",
-        JSON.stringify({ authenticated: true, verifiedAt: new Date().toISOString() })
-      );
-      if (role) {
-        const profile = JSON.parse(localStorage.getItem("profile") || "{}");
-        profile.role = role;
-        profile.fname = form.fname;
-        profile.lname = form.lname;
-        profile.firstName = form.fname;
-        profile.lastName = form.lname;
-        profile.email = form.email;
-        localStorage.setItem("profile", JSON.stringify(profile));
-      }
+      await persistAuthenticatedSession({
+        response: result.payload as unknown,
+        email: form.email,
+        role,
+        fname: form.fname,
+        lname: form.lname,
+      });
 
       dispatch(setSignupForm(null));
-      navigate("/auth/LocationOnboarding");
+      navigate("/home", { replace: true });
       return;
     }
 
@@ -157,22 +159,22 @@ export default function Otp() {
           otp,
           password: form.password,
           role,
+          fname: form.fname,
+          lname: form.lname,
         })
       );
       if (!verifyOtpThunk.fulfilled.match(result)) return;
 
-      localStorage.setItem(
-        "auth",
-        JSON.stringify({ authenticated: true, verifiedAt: new Date().toISOString() })
-      );
-      if (role) {
-        const profile = JSON.parse(localStorage.getItem("profile") || "{}");
-        profile.role = role;
-        localStorage.setItem("profile", JSON.stringify(profile));
-      }
+      await persistAuthenticatedSession({
+        response: result.payload as unknown,
+        email: form.email,
+        role,
+        fname: form.fname,
+        lname: form.lname,
+      });
 
       dispatch(setLoginForm(null));
-      navigate("/home");
+      navigate("/home", { replace: true });
       return;
     }
 
@@ -212,6 +214,7 @@ export default function Otp() {
       } catch {
         /* ignore storage failures */
       }
+      clearAuthState();
       dispatch(setSignupForm(null));
       dispatch(setLoginForm(null));
       navigate("/", { replace: true });
@@ -235,8 +238,16 @@ export default function Otp() {
     const profileRoleRaw = profile?.role;
     const profileRole =
       profileRoleRaw === "provider" || profileRoleRaw === "consumer" ? profileRoleRaw : undefined;
-    const profileFname = typeof profile?.fname === "string" ? (profile.fname as string) : undefined;
-    const profileLname = typeof profile?.lname === "string" ? (profile.lname as string) : undefined;
+    const profileFname = (() => {
+      if (typeof profile?.fname === "string") return profile.fname as string;
+      if (typeof profile?.firstName === "string") return profile.firstName as string;
+      return undefined;
+    })();
+    const profileLname = (() => {
+      if (typeof profile?.lname === "string") return profile.lname as string;
+      if (typeof profile?.lastName === "string") return profile.lastName as string;
+      return undefined;
+    })();
     const profileEmail = typeof profile?.email === "string" ? (profile.email as string) : undefined;
 
     const targetSignup = signupFormData;
@@ -254,11 +265,27 @@ export default function Otp() {
       return;
     }
 
+    const resolvedFname =
+      targetSignup?.fname ??
+      targetLogin?.fname ??
+      profileFname ??
+      (typeof signupFormData?.fname === "string" ? signupFormData.fname : undefined);
+    const resolvedLname =
+      targetSignup?.lname ??
+      targetLogin?.lname ??
+      profileLname ??
+      (typeof signupFormData?.lname === "string" ? signupFormData.lname : undefined);
+
+    if (!resolvedFname || !resolvedLname) {
+      setLocalError("We need your first and last name to resend the code. Please restart the process.");
+      return;
+    }
+
     const action = await dispatch(
       resendOtpThunk({
         email: baseEmail,
-        fname: targetSignup?.fname ?? profileFname,
-        lname: targetSignup?.lname ?? profileLname,
+        fname: resolvedFname,
+        lname: resolvedLname,
         role: targetSignup?.role ?? targetLogin?.role ?? normalisedRole ?? profileRole,
       })
     );

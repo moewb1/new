@@ -10,6 +10,26 @@ export const apiClient = axios.create({
   withCredentials: false,
 });
 
+apiClient.interceptors.request.use((config) => {
+  try {
+    if (typeof localStorage !== "undefined") {
+      const token = localStorage.getItem("auth.token");
+      const trimmedToken = token?.trim();
+      if (trimmedToken) {
+        config.headers = config.headers ?? {};
+        if (!config.headers.Authorization) {
+          config.headers.Authorization = /^Bearer\s+/i.test(trimmedToken)
+            ? trimmedToken
+            : `Bearer ${trimmedToken}`;
+        }
+      }
+    }
+  } catch {
+    /* ignore storage access */
+  }
+  return config;
+});
+
 export function extractErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const response = error.response;
@@ -28,4 +48,3 @@ export function extractErrorMessage(error: unknown): string {
 
   return "Something went wrong, please try again.";
 }
-

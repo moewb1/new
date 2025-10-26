@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./IdentityOnboarding.module.css";
+import { useRedirectIfAuthenticated } from "@/hooks/useRedirectIfAuthenticated";
 import colors from "@/styles/colors";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchLanguages, fetchNationalities } from "@/store/slices/metaSlice";
@@ -215,6 +216,7 @@ const LanguageMultiValueLabel = (
 };
 
 export default function IdentityOnboarding() {
+  useRedirectIfAuthenticated("/home");
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const languagesState = useAppSelector((state) => state.meta.languages);

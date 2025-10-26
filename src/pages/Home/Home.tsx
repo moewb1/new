@@ -16,7 +16,7 @@ import {
 } from "@/constants/contact";
 import { GmailIcon, WhatsAppIcon } from "@/components/icons/ContactIcons";
 import { useAuthState } from "@/hooks/useAuthState";
-import { isGuestConsumer } from "@/utils/auth";
+import { clearAuthState, isGuestConsumer } from "@/utils/auth";
 
 /* ------------------ Types ------------------ */
 type SavedLocation = { lat: number; lng: number; address?: string };
@@ -617,22 +617,23 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
 
   // Logout
   const logout = () => {
-    let profileEmail: string | undefined;
-    let profileRole: "provider" | "consumer" | undefined;
+    console.log("[Home] logout invoked");
     try {
-      const stored = JSON.parse(localStorage.getItem("profile") || "{}") as Record<string, unknown>;
-      if (typeof stored?.email === "string") profileEmail = stored.email;
-      if (stored?.role === "provider" || stored?.role === "consumer") profileRole = stored.role;
+      ["auth", "profile", "location", "auth.token", "auth.refresh", "kyc.identity"].forEach((key) =>
+        localStorage.removeItem(key)
+      );
     } catch {
       /* ignore storage parsing issues */
     }
-    sessionStorage.setItem("onboardingFlow", "logout");
-    const params = new URLSearchParams({ flow: "logout" });
-    if (profileEmail) params.set("email", profileEmail);
-    if (profileRole) params.set("role", profileRole);
+    try {
+      sessionStorage.removeItem("onboardingFlow");
+    } catch {
+      /* ignore session storage failures */
+    }
+    clearAuthState();
     setProfileDrawerOpen(false);
     setNotifDrawerOpen(false);
-    navigate(`/auth/otp?${params.toString()}`);
+    navigate("/", { replace: true });
   };
 
   // Close drawers on ESC

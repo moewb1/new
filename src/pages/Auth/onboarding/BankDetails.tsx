@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./BankDetails.module.css";
+import { useRedirectIfAuthenticated } from "@/hooks/useRedirectIfAuthenticated";
 import colors from "@/styles/colors";
 
 /** ----- IBAN helpers ----- **/
@@ -39,6 +40,7 @@ function ibanRuleChecks(ibanInput: string) {
 }
 
 export default function BankDetails() {
+  useRedirectIfAuthenticated("/home"); {
   const navigate = useNavigate();
   const profile = useMemo(() => {
     try { return JSON.parse(localStorage.getItem("profile") || "{}"); }

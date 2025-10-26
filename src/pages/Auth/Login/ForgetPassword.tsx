@@ -2,12 +2,14 @@ import React from "react";
 import styles from "./Login.module.css"; // OK to reuse
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import colors from "@/styles/colors";
+import { useRedirectIfAuthenticated } from "@/hooks/useRedirectIfAuthenticated";
 
 // tiny helper to compose classNames safely
 const cx = (...list: Array<string | false | null | undefined>) =>
   list.filter(Boolean).join(" ");
 
 export default function ForgetPassword() {
+  useRedirectIfAuthenticated("/home");
   const [search] = useSearchParams();
   const prefillEmail = search.get("email") ?? "";
   const role = search.get("role");

@@ -1,14 +1,16 @@
 import React from "react";
 import styles from "./Login.module.css";
-import { Link, useNavigate, useSearchParams, createSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import colors from "@/styles/colors";
 import { startGuestSession } from "@/utils/auth";
+import { persistAuthenticatedSession } from "@/utils/authSession";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   login as loginThunk,
   type LoginPayload,
   resetAuthRequests,
 } from "@/store/slices/authSlice";
+import { useRedirectIfAuthenticated } from "@/hooks/useRedirectIfAuthenticated";
 
 /* reuse the same assets you added for signup */
 import appleLogo from "@/assets/Apple_logo.svg";
@@ -19,6 +21,8 @@ export default function Login() {
   const dispatch = useAppDispatch();
   const [searchParams] = useSearchParams();
   const loginRequest = useAppSelector((state) => state.auth.login);
+
+  useRedirectIfAuthenticated("/home");
 
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -61,13 +65,13 @@ export default function Login() {
     const result = await dispatch(loginThunk(payload));
     if (!loginThunk.fulfilled.match(result)) return;
 
-    sessionStorage.setItem("onboardingFlow", "login");
-    const params: Record<string, string> = {
+    await persistAuthenticatedSession({
+      response: result.payload as unknown,
       email: payload.email,
-      flow: "login",
-    };
-    if (payload.role) params.role = payload.role;
-    navigate(`/auth/otp?${createSearchParams(params).toString()}`, { state: { loginForm: payload } });
+      role: payload.role ?? (role === "" ? undefined : role),
+    });
+
+    navigate("/home", { replace: true });
   };
 
   const handleGuest = React.useCallback(() => {

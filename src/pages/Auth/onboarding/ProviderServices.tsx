@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./ProviderServices.module.css";
+import { useRedirectIfAuthenticated } from "@/hooks/useRedirectIfAuthenticated";
 import colors from "@/styles/colors";
 import { createOrUpdateProfile } from "@/services/profileService";
 import { buildProfileSubmissionPayload } from "@/utils/profileSubmission";
@@ -11,6 +12,7 @@ import {
 } from "@/store/slices/metaSlice";
 
 export default function ProviderServices() {
+  useRedirectIfAuthenticated("/home");
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const servicesState = useAppSelector((state) => state.meta.services);

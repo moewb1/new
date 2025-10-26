@@ -55,6 +55,70 @@ export interface CreateProfileResponse {
   data?: unknown;
 }
 
+export interface ProfileResponse {
+  user: {
+    id: number;
+    fname: string;
+    lname: string;
+    email: string;
+    dial_code: string;
+    phone_number: string;
+    type: PersonType;
+    dob: string | null;
+    status: string | null;
+    needed_changes?: string | null;
+    company_name?: string | null;
+    rejection_reason?: string | null;
+    approved_at?: string | null;
+    rejected_at?: string | null;
+    role?: ProfileType;
+    active?: number;
+    bio?: string | null;
+    nationality?: {
+      id: number;
+      name: string;
+      code: string;
+      default_multiplier_percent?: string;
+      active?: number;
+    } | null;
+    addresses?: Array<{
+      id: number;
+      line1: string;
+      line2?: string | null;
+      city?: string | null;
+      state?: string | null;
+      building?: string | null;
+      apartment?: string | null;
+      country_code?: string | null;
+      postal_code?: string | null;
+      latitude?: string | null;
+      longitude?: string | null;
+    }>;
+    bank_account?: {
+      iban: string;
+      bank_name: string;
+      account_holder_name: string;
+    } | null;
+    images?: Array<{
+      id: number;
+      file_name: string;
+      slug?: string | null;
+      normal_url?: string | null;
+      thumb_url?: string | null;
+      thumb_plus_url?: string | null;
+    }>;
+    kyc_documents?: Array<{
+      id: number;
+      doc_type: string;
+      path: string;
+      active?: number;
+    }>;
+    service_ids?: number[];
+    language_ids?: number[];
+  };
+  has_profile: boolean;
+}
+
 function appendJSON(formData: FormData, key: string, value: unknown) {
   if (value === undefined || value === null) return;
   formData.append(key, typeof value === "string" ? value : JSON.stringify(value));
@@ -102,6 +166,18 @@ export async function createOrUpdateProfile(
       headers: { "Content-Type": "multipart/form-data" },
     });
     return data;
+  } catch (error) {
+    throw new Error(extractErrorMessage(error));
+  }
+}
+
+export async function fetchProfile(): Promise<ProfileResponse> {
+  try {
+    const { data } = await apiClient.get<{ success: boolean; data: ProfileResponse }>("/profile");
+    if (!data || typeof data !== "object" || data.success !== true || !data.data) {
+      throw new Error("Unexpected profile response.");
+    }
+    return data.data;
   } catch (error) {
     throw new Error(extractErrorMessage(error));
   }

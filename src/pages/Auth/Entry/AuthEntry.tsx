@@ -7,6 +7,7 @@ import AuthChoiceCard from "@/components/AuthChoiceCard/AuthChoiceCard";
 import colors from "@/styles/colors";
 import hand from "@/assets/hand.png";
 import service from "@/assets/service.png";
+import { useRedirectIfAuthenticated } from "@/hooks/useRedirectIfAuthenticated";
 
 type Role = "provider" | "consumer";
 
@@ -29,6 +30,8 @@ const slides: Slide[] = [
 export default function AuthEntry() {
   const [role, setRole] = useState<Role | null>(null);
   const navigate = useNavigate();
+
+  useRedirectIfAuthenticated("/home");
 
   const onNext = () => {
     if (!role) return;

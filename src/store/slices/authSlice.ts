@@ -35,15 +35,16 @@ interface VerifyOtpPayload {
 
 interface ResendOtpPayload {
   email: string;
-  fname?: string;
-  lname?: string;
-  role?: Role;
+  fname: string;
+  lname: string;
 }
 
 interface LoginPayload {
   email: string;
   password: string;
   role?: Role;
+  fname?: string;
+  lname?: string;
 }
 
 interface LogoutPayload {

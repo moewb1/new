@@ -3,6 +3,7 @@ import styles from "./Signup.module.css";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import colors from "@/styles/colors";
 import { startGuestSession } from "@/utils/auth";
+import { useRedirectIfAuthenticated } from "@/hooks/useRedirectIfAuthenticated";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   resetAuthRequests,
@@ -25,6 +26,8 @@ export default function Signup() {
   const signupRequest = useAppSelector((state) => state.auth.signup);
 
   const role = search.get("role"); // "provider" | "consumer" | null
+  useRedirectIfAuthenticated("/home");
+
   const roleLabel =
     role === "provider" ? "Service Provider" :
     role === "consumer" ? "Consumer" :

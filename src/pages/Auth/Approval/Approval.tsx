@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import styles from "./Approval.module.css";
 import colors from "@/styles/colors";
+import { useRedirectIfAuthenticated } from "@/hooks/useRedirectIfAuthenticated";
 import ContactUsModal from "@/components/ContactUsModal/ContactUsModal";
 import {
   CONTACT_EMAIL,
@@ -10,6 +11,7 @@ import {
 } from "@/constants/contact";
 
 export default function Approval() {
+  useRedirectIfAuthenticated("/home");
   const [search] = useSearchParams();
   const navigate = useNavigate();
   const resolvedRole = (search.get("role") || localStorage.getItem("role") || (() => {

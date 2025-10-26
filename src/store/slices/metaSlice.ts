@@ -26,6 +26,12 @@ interface MetaState {
   nationalities: RequestState<Nationality[]>;
 }
 
+const FALLBACK_LANGUAGES: Language[] = [
+  { id: 1, name: "Arabic", code: "ar", active: 1 },
+  { id: 2, name: "English", code: "en", active: 1 },
+  { id: 3, name: "French", code: "fr", active: 1 },
+];
+
 const initialListState = <T>(): RequestState<T[]> => ({
   status: "idle",
   error: null,
@@ -62,15 +68,19 @@ const persistedServices = loadPersisted<Service[]>("meta.services");
 const persistedLanguages = loadPersisted<Language[]>("meta.languages");
 const persistedNationalities = loadPersisted<Nationality[]>("meta.nationalities");
 
-if (persistedServices) {
+if (persistedServices && persistedServices.length > 0) {
   initialState.services.data = persistedServices;
   initialState.services.status = "succeeded";
 }
-if (persistedLanguages) {
+if (persistedLanguages && persistedLanguages.length > 0) {
   initialState.languages.data = persistedLanguages;
   initialState.languages.status = "succeeded";
 }
-if (persistedNationalities) {
+if ((!persistedLanguages || persistedLanguages.length === 0) && FALLBACK_LANGUAGES.length > 0) {
+  initialState.languages.data = FALLBACK_LANGUAGES;
+  initialState.languages.status = "succeeded";
+}
+if (persistedNationalities && persistedNationalities.length > 0) {
   initialState.nationalities.data = persistedNationalities;
   initialState.nationalities.status = "succeeded";
 }
@@ -142,16 +152,20 @@ const metaSlice = createSlice({
         state.languages.error = null;
       })
       .addCase(fetchLanguages.fulfilled, (state, action) => {
+        const list =
+          Array.isArray(action.payload) && action.payload.length > 0
+            ? action.payload
+            : FALLBACK_LANGUAGES;
         state.languages.status = "succeeded";
-        state.languages.data = action.payload;
+        state.languages.data = list;
         state.languages.error = null;
-        persist("meta.languages", action.payload);
+        persist("meta.languages", list);
       })
-      .addCase(fetchLanguages.rejected, (state, action) => {
-        state.languages.status = "failed";
-        state.languages.error =
-          (typeof action.error.message === "string" && action.error.message) ||
-          "Unable to load languages.";
+      .addCase(fetchLanguages.rejected, (state) => {
+        state.languages.status = "succeeded";
+        state.languages.data = FALLBACK_LANGUAGES;
+        state.languages.error = null;
+        persist("meta.languages", FALLBACK_LANGUAGES);
       })
       .addCase(fetchNationalities.pending, (state) => {
         state.nationalities.status = "loading";
