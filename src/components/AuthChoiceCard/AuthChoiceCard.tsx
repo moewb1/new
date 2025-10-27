@@ -8,6 +8,7 @@ type Props = {
   label: string;
   description: string;
   highlight: string;
+  roleBadge: string;
   selected?: boolean;
   onSelect: (role: Role) => void;
 };
@@ -17,6 +18,7 @@ export default function AuthChoiceCard({
   label,
   description,
   highlight,
+  roleBadge,
   selected,
   onSelect,
 }: Props) {
@@ -36,6 +38,7 @@ export default function AuthChoiceCard({
       data-selected={selected ? "true" : "false"}
       aria-label={label}
     >
+      <span className={styles.roleBadge}>{roleBadge}</span>
       <span className={styles.highlight}>{highlight}</span>
       <h3 className={styles.title}>{label}</h3>
       <p className={styles.description}>{description}</p>

@@ -14,45 +14,36 @@
   gap: 16px;
 }
 
-.logoMark {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 8px;
-  font-family: "Grace Zyora", serif;
-  font-size: clamp(1.6rem, 3.2vw, 2.1rem);
-  color: var(--color-charcoal-olive);
-  letter-spacing: -0.04em;
+.brandGroup {
+  display: flex;
+  align-items: center;
+  gap: 18px;
 }
 
-.logoAccent {
-  color: var(--color-golden-hour);
+.logoImage {
+  width: clamp(180px, 28vw, 240px);
+  height: auto;
+  filter: drop-shadow(0 10px 24px rgba(26, 35, 50, 0.16));
 }
 
-.languageToggle {
-  display: inline-flex;
-  gap: 8px;
-  background: rgba(26, 35, 50, 0.08);
-  border-radius: 999px;
-  padding: 4px;
+.tagline {
+  margin: 0;
+  font-family: var(--font-headline);
+  font-size: clamp(1rem, 1.8vw, 1.2rem);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(58, 62, 58, 0.78);
 }
 
-.languageButton {
-  border: none;
-  background: transparent;
-  border-radius: 999px;
-  padding: 6px 14px;
+.localeNote {
+  margin: 0;
   font-family: var(--font-body);
-  font-size: 0.9rem;
   font-weight: 600;
-  color: rgba(26, 35, 50, 0.65);
-  cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
-}
-
-.languageButton[data-active="true"] {
-  background: var(--color-surface);
-  color: var(--color-midnight-navy);
-  box-shadow: 0 8px 22px rgba(26, 35, 50, 0.15);
+  font-size: clamp(0.9rem, 1.6vw, 1rem);
+  color: rgba(26, 35, 50, 0.78);
+  background: rgba(26, 35, 50, 0.08);
+  padding: 10px 16px;
+  border-radius: 999px;
 }
 
 .hero {
@@ -142,7 +133,7 @@
 
 .roleTitle {
   font-family: var(--font-headline);
-  font-size: clamp(2rem, 3.2vw, 2.6rem);
+  font-size: clamp(2.2rem, 3.6vw, 3rem);
   font-weight: 300;
 }
 
@@ -268,6 +259,27 @@
 .footerLink {
   color: var(--color-midnight-navy);
   font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .headerRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .brandGroup {
+    gap: 12px;
+  }
+
+  .tagline {
+    letter-spacing: 0.12em;
+  }
+
+  .localeNote {
+    width: 100%;
+    text-align: center;
+  }
 }
 
 @media (max-width: 720px) {

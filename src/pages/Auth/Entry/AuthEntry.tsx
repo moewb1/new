@@ -5,6 +5,7 @@ import Autoplay from "embla-carousel-autoplay";
 import styles from "./AuthEntry.module.css";
 import AuthChoiceCard from "@/components/AuthChoiceCard/AuthChoiceCard";
 import { useRedirectIfAuthenticated } from "@/hooks/useRedirectIfAuthenticated";
+import recruitMeLogo from "@/assets/recruitme-logo.svg";
 
 type Role = "provider" | "consumer";
 
@@ -28,20 +29,21 @@ const slides: Slide[] = [
   },
 ];
 
-const languageOptions = ["English", "العربية", "हिन्दी"] as const;
-
-type Language = (typeof languageOptions)[number];
-
-const roleContent: Record<Role, { label: string; highlight: string; description: string }> = {
+const roleContent: Record<
+  Role,
+  { label: string; highlight: string; description: string; roleBadge: string }
+> = {
   consumer: {
     label: "Find Talent",
-    highlight: "I need an expert crew",
+    highlight: "Build my crew",
+    roleBadge: "Client / Recruiter",
     description:
       "Build your event roster in under three minutes with trusted professionals and transparent pricing.",
   },
   provider: {
     label: "Offer My Skills",
-    highlight: "I'm ready to work",
+    highlight: "I’m ready to work",
+    roleBadge: "Provider / Talent",
     description:
       "Showcase your licences, set your availability, and get booked by premium venues and brands.",
   },
@@ -85,22 +87,11 @@ export default function AuthEntry() {
   return (
     <section className={styles.wrapper}>
       <header className={styles.headerRow}>
-        <span className={styles.logoMark}>
-          talent<span className={styles.logoAccent}>on</span>tap
-        </span>
-        <nav className={styles.languageToggle} aria-label="Choose language">
-          {languageOptions.map((lang) => (
-            <button
-              key={lang}
-              type="button"
-              className={styles.languageButton}
-              data-active={language === lang ? "true" : "false"}
-              onClick={() => setLanguage(lang)}
-            >
-              {lang}
-            </button>
-          ))}
-        </nav>
+        <div className={styles.brandGroup}>
+          <img src={recruitMeLogo} alt="Recruit Me" className={styles.logoImage} />
+          <p className={styles.tagline}>Where talent meets opportunity.</p>
+        </div>
+        <p className={styles.localeNote}>Platform available in English • Serving venues across the UAE</p>
       </header>
 
       <div className={`${styles.hero} brand-spotlight`}>
@@ -121,7 +112,7 @@ export default function AuthEntry() {
 
       <section className={styles.roleSection}>
         <div className={styles.roleHeader}>
-          <h2 className={styles.roleTitle}>I'm here to…</h2>
+          <h2 className={styles.roleTitle}>I&rsquo;m here to...</h2>
           <p className={styles.roleCaption}>Select the path that aligns with your goals.</p>
         </div>
         <div className={styles.roleGrid} role="radiogroup" aria-label="Choose your starting path">
@@ -130,6 +121,7 @@ export default function AuthEntry() {
               key={key}
               role={key}
               label={roleContent[key].label}
+              roleBadge={roleContent[key].roleBadge}
               highlight={roleContent[key].highlight}
               description={roleContent[key].description}
               selected={role === key}
@@ -139,7 +131,7 @@ export default function AuthEntry() {
         </div>
       </section>
 
-      <section className={styles.carousel} aria-label="Why teams choose Talent On Tap">
+      <section className={styles.carousel} aria-label="Why teams choose Recruit Me">
         <div className={styles.embla} ref={emblaRef}>
           <div className={styles.emblaContainer}>
             {slides.map((slide, i) => (

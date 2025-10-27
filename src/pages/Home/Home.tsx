@@ -664,6 +664,8 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
               {roleBadgeLabel ? <span className={styles.roleBadge}>{roleBadgeLabel}</span> : null}
             </div>
 
+            <p className={styles.heroSubtitle}>Recruit Me keeps your opportunities front and center.</p>
+
             {guestConsumer ? (
               <div className={styles.guestInfoPill}>Guest mode • Sign in to add your location</div>
             ) : (
