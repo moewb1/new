@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import styles from "./Home.module.css";
 import { useNavigate } from "react-router-dom";
-import khidmaLogo from "@/styles/Logo.png";
+import recruitMeLogo from "@/styles/Logo.png";
 import {
   CONSUMER_JOBS_UPDATED_EVENT,
   getConsumerJobsSummary,
@@ -468,7 +468,7 @@ const SEED_NOTIFS: Notif[] = [
   { id: "n17", title: "New job near you",     body: "Night Security at City Walk.",            timeISO: ago(3800), unread: true  },
   { id: "n18", title: "Application update",   body: "Café Latté declined your application.",   timeISO: ago(4100), unread: false },
   { id: "n19", title: "Payment method",       body: "Add a backup bank account.",              timeISO: ago(4700), unread: false },
-  { id: "n20", title: "Chat message",         body: "Khidma concierge: Can you start Friday?", timeISO: ago(5200), unread: true  },
+  { id: "n20", title: "Chat message",         body: "Recruit Me concierge: Can you start Friday?", timeISO: ago(5200), unread: true  },
   { id: "n21", title: "New job near you",     body: "Event Planner Assistant (weekend).",      timeISO: ago(5800), unread: false },
   { id: "n22", title: "System",               body: "We’ve updated our Terms.",                timeISO: ago(8000), unread: false },
 ];
@@ -660,9 +660,17 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
         <div className={styles.heroTop}>
           <div className={styles.helloBlock}>
             <div className={styles.brandHeader}>
-              <img src={khidmaLogo} alt="Khidma" className={styles.brandLogo} />
-
+              <img src={recruitMeLogo} alt="Recruit Me!!" className={styles.brandLogo} />
+              <div className={styles.brandTaglineGroup}>
+                <span className={styles.brandTitle}>Recruit Me!!</span>
+                <span className={styles.brandTagline}>
+                  Hospitality pros, ready when your team needs them.
+                </span>
+              </div>
             </div>
+            <p className={styles.heroSubtitle}>
+              Match with vetted event crew, chat instantly, and keep every booking moving from one place.
+            </p>
             <div className={styles.greetingLine}>
               <span className={styles.greeting}>{greeting},</span>
               <span className={styles.name}>{displayName}</span>
@@ -773,7 +781,7 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
             aria-hidden={carouselIndex === idx ? false : true}
           >
             <div className={styles.promoOverlay}>
-              <span className={styles.promoEyebrow}>Khidma Spotlight</span>
+              <span className={styles.promoEyebrow}>Recruit Me Spotlight</span>
               <h3 className={styles.promoHeadline}>{slide.headline}</h3>
               <p className={styles.promoSub}>{slide.sub}</p>
             </div>
