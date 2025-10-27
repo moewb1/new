@@ -661,19 +661,13 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
           <div className={styles.helloBlock}>
             <div className={styles.brandHeader}>
               <img src={khidmaLogo} alt="Khidma" className={styles.brandLogo} />
-              <div className={styles.brandTaglineGroup}>
-                <span className={styles.brandTitle}>Khidma</span>
-                <span className={styles.brandTagline}>Hospitality talent, ready when you are.</span>
-              </div>
+
             </div>
             <div className={styles.greetingLine}>
               <span className={styles.greeting}>{greeting},</span>
               <span className={styles.name}>{displayName}</span>
               {roleBadgeLabel ? <span className={styles.roleBadge}>{roleBadgeLabel}</span> : null}
             </div>
-
-            <p className={styles.heroSubtitle}>Khidma keeps your opportunities front and center and your crew one tap away.</p>
-
             {guestConsumer ? (
               <div className={styles.guestInfoPill}>Guest mode • Sign in to add your location</div>
             ) : (
