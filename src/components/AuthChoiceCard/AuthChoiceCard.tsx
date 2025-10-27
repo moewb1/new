@@ -1,39 +1,47 @@
 import React from "react";
 import styles from "./AuthChoiceCard.module.css";
-import colors from "@/styles/colors";
+
+type Role = "provider" | "consumer";
 
 type Props = {
-  title: "Provider" | "Consumer";
-  imgSrc: string;            // using hand.png for both
+  role: Role;
+  label: string;
+  description: string;
+  highlight: string;
   selected?: boolean;
-  onClick: () => void;
+  onSelect: (role: Role) => void;
 };
 
-export default function AuthChoiceCard({ title, imgSrc, selected, onClick }: Props) {
+export default function AuthChoiceCard({
+  role,
+  label,
+  description,
+  highlight,
+  selected,
+  onSelect,
+}: Props) {
   return (
     <button
       type="button"
       role="radio"
       aria-checked={!!selected}
-      onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onClick();
+      onClick={() => onSelect(role)}
+      onKeyDown={(event) => {
+        if (event.key === " " || event.key === "Enter") {
+          event.preventDefault();
+          onSelect(role);
         }
       }}
-      className={styles.card}
+      className={`${styles.card} brand-spotlight`}
       data-selected={selected ? "true" : "false"}
-      aria-label={title}
-      style={{
-        backgroundColor: selected ? colors.accent : "#fff",
-        color: "#000",
-      }}
+      aria-label={label}
     >
-      <div className={styles.mediaWrap} aria-hidden="true">
-        <img src={imgSrc} alt="" className={styles.img} />
-      </div>
-      <span className={styles.title}>{title}</span>
+      <span className={styles.highlight}>{highlight}</span>
+      <h3 className={styles.title}>{label}</h3>
+      <p className={styles.description}>{description}</p>
+      <span className={styles.cta} aria-hidden="true">
+        {selected ? "Selected" : "Tap to choose"}
+      </span>
     </button>
   );
 }

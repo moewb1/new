@@ -1,43 +1,49 @@
 import React from "react";
 import styles from "./Loader.module.css";
-import colors from "@/styles/colors";
-import { RingLoader } from "react-spinners";
 
 type LoaderProps = {
   label?: string;
   subLabel?: string;
-  /** Keep true if you want it centered in the viewport, still no bg. */
   fullScreen?: boolean;
-  /** Adjust size if you want it even bigger */
-  size?: number; // px
 };
 
+const fallbackMessages = [
+  "Finding perfect matches…",
+  "Almost there…",
+  "Rounding up the best…",
+];
+
 export default function Loader({
-  label = "Loading",
+  label = "Where Talent Meets Opportunity",
   subLabel,
   fullScreen = false,
-  size = 110, // BIG by default
 }: LoaderProps) {
+  const [messageIndex, setMessageIndex] = React.useState(0);
+
+  React.useEffect(() => {
+    if (subLabel) return;
+    const timer = window.setInterval(() => {
+      setMessageIndex((idx) => (idx + 1) % fallbackMessages.length);
+    }, 3200);
+    return () => window.clearInterval(timer);
+  }, [subLabel]);
+
+  const activeMessage = subLabel ?? fallbackMessages[messageIndex];
+
   return (
-    <div
-      className={styles.wrap}
-      data-fullscreen={fullScreen ? "true" : "false"}
-    >
-      <RingLoader
-        size={size}
-        speedMultiplier={0.9}
-        color={String((colors as any).accent ?? "#6b8e23")}
-        aria-label="Loading indicator"
-      />
+    <div className={styles.wrap} data-fullscreen={fullScreen ? "true" : "false"}>
+      <div className={styles.logoScene} role="img" aria-label="Talent On Tap animated logo">
+        <span className={styles.circleOne} />
+        <span className={styles.circleTwo} />
+        <span className={styles.circlePulse} />
+        <span className={styles.logoMark}>
+          <span className={styles.logoGlyphT}>t</span>
+          <span className={styles.logoGlyphO}>o</span>
+        </span>
+      </div>
       <div className={styles.textBlock}>
-        <p className={styles.title} style={{ color: String((colors as any).black ?? "#000") }}>
-          {label}
-        </p>
-        {subLabel ? (
-          <p className={styles.sub} style={{ color: String((colors as any).black ?? "#000") }}>
-            {subLabel}
-          </p>
-        ) : null}
+        <p className={styles.title}>{label}</p>
+        <p className={styles.sub}>{activeMessage}</p>
       </div>
     </div>
   );

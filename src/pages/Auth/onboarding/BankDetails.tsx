@@ -40,7 +40,7 @@ function ibanRuleChecks(ibanInput: string) {
 }
 
 export default function BankDetails() {
-  useRedirectIfAuthenticated("/home"); {
+  useRedirectIfAuthenticated("/home");
   const navigate = useNavigate();
   const profile = useMemo(() => {
     try { return JSON.parse(localStorage.getItem("profile") || "{}"); }

@@ -1,32 +1,140 @@
-/* Centered, no background. */
 .wrap {
   width: 100%;
-  min-height: 140px;
+  min-height: 240px;
   display: grid;
   justify-items: center;
   align-content: center;
-  gap: 14px;
+  gap: 18px;
+  padding: 24px;
 }
 
-/* Full-screen center (still no overlay/background) */
 .wrap[data-fullscreen="true"] {
   position: fixed;
   inset: 0;
-  z-index: 1000;
-  pointer-events: none; /* lets clicks pass through during route loads */
+  z-index: 1200;
+  background: linear-gradient(180deg, rgba(26, 35, 50, 0.74), rgba(26, 35, 50, 0.6));
+  backdrop-filter: blur(6px);
 }
 
-/* Text */
-.textBlock { text-align: center; display: grid; gap: 2px; }
+.logoScene {
+  position: relative;
+  width: clamp(140px, 30vw, 220px);
+  height: clamp(140px, 30vw, 220px);
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+}
+
+.circleOne,
+.circleTwo,
+.circlePulse {
+  position: absolute;
+  border-radius: 999px;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+
+.circleOne {
+  width: 82%;
+  height: 82%;
+  background: radial-gradient(circle at 30% 30%, rgba(242, 237, 218, 0.9), rgba(242, 237, 218, 0));
+  box-shadow: 0 0 90px rgba(212, 165, 116, 0.35);
+  animation: orbit 6s ease-in-out infinite;
+}
+
+.circleTwo {
+  width: 64%;
+  height: 64%;
+  background: radial-gradient(circle at 70% 70%, rgba(139, 158, 139, 0.9), rgba(139, 158, 139, 0));
+  mix-blend-mode: screen;
+  animation: orbitReverse 5.4s ease-in-out infinite;
+}
+
+.circlePulse {
+  width: 100%;
+  height: 100%;
+  border: 3px solid rgba(212, 165, 116, 0.6);
+  opacity: 0.5;
+  animation: pulse 2.8s ease-out infinite;
+}
+
+.logoMark {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: "Grace Zyora", serif;
+  font-size: clamp(3.6rem, 7vw, 4.6rem);
+  color: #f2edda;
+  text-transform: lowercase;
+  letter-spacing: -0.06em;
+}
+
+.logoGlyphT {
+  font-weight: 300;
+}
+
+.logoGlyphO {
+  font-weight: 400;
+  color: var(--color-golden-hour);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(212, 165, 116, 0.12);
+  border-radius: 50%;
+  padding-inline: 0.3ch;
+}
+
+.textBlock {
+  text-align: center;
+  display: grid;
+  gap: 6px;
+  color: var(--color-surface);
+  max-width: 360px;
+}
+
 .title {
   margin: 0;
-  font-weight: 900;
-  letter-spacing: .2px;
-  font-size: 16px;
+  font-family: "Grace Zyora", serif;
+  font-weight: 300;
+  font-size: clamp(1.4rem, 3vw, 2rem);
 }
+
 .sub {
   margin: 0;
-  font-weight: 600;
-  font-size: 12px;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: clamp(0.95rem, 2.2vw, 1.1rem);
   opacity: 0.85;
+}
+
+@keyframes orbit {
+  0%,
+  100% {
+    transform: rotate(0deg) scale(0.98);
+  }
+  50% {
+    transform: rotate(8deg) scale(1.05);
+  }
+}
+
+@keyframes orbitReverse {
+  0%,
+  100% {
+    transform: rotate(0deg) scale(0.98);
+  }
+  50% {
+    transform: rotate(-10deg) scale(1.04);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.82);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.12);
+    opacity: 0;
+  }
 }

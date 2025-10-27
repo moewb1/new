@@ -1,7 +1,6 @@
 import React from "react";
 import styles from "./Login.module.css";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import colors from "@/styles/colors";
+import { Link, createSearchParams, useNavigate, useSearchParams } from "react-router-dom";
 import { startGuestSession } from "@/utils/auth";
 import { persistAuthenticatedSession } from "@/utils/authSession";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -12,7 +11,6 @@ import {
 } from "@/store/slices/authSlice";
 import { useRedirectIfAuthenticated } from "@/hooks/useRedirectIfAuthenticated";
 
-/* reuse the same assets you added for signup */
 import appleLogo from "@/assets/Apple_logo.svg";
 import googleLogo from "@/assets/Google_logo.svg.webp";
 
@@ -41,7 +39,6 @@ export default function Login() {
   const isSubmitting = loginRequest.status === "loading";
   const loginError = loginRequest.error;
 
-  // Initialize role from URL on mount
   React.useEffect(() => {
     const r = searchParams.get("role");
     if (r === "provider" || r === "consumer") setRole(r);
@@ -86,26 +83,38 @@ export default function Login() {
 
   return (
     <section className={styles.wrapper}>
-      {/* Top title only */}
       <header className={styles.header}>
-        <h1 className={styles.h1}>Log In</h1>
+        <h1 className={styles.h1}>Back to Business</h1>
+        <p className={styles.sub}>Log in to keep your crew and bookings moving.</p>
       </header>
 
-      {/* Left-aligned intro sitting right above the form */}
-      <div className={styles.intro}>
-        <h2 className={styles.h2}>Welcome Back</h2>
-        <p className={styles.desc}>
-          Log in to find and book services that meet your needs
-        </p>
-      </div>
-
       <form className={styles.box} onSubmit={onSubmit} noValidate>
+        <div className={styles.roleToggle} role="tablist" aria-label="Select account type">
+          <button
+            type="button"
+            className={styles.roleButton}
+            data-active={role === "consumer" ? "true" : "false"}
+            onClick={() => setRole("consumer")}
+          >
+            Client
+          </button>
+          <button
+            type="button"
+            className={styles.roleButton}
+            data-active={role === "provider" ? "true" : "false"}
+            onClick={() => setRole("provider")}
+          >
+            Service Provider
+          </button>
+        </div>
+
         <label className={`${styles.inputWrap} ${showEmailError ? styles.inputError : ""}`}>
+          <span className="visually-hidden">Work email</span>
           <input
             className={styles.input}
-            placeholder="Enter Your Mail"
+            placeholder="Work email"
             type="email"
-            aria-label="Enter Your Mail"
+            aria-label="Work email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             onBlur={() => setTouchedEmail(true)}
@@ -116,15 +125,18 @@ export default function Login() {
           />
         </label>
         {showEmailError && (
-          <p id="email-error" className={styles.error}>Please enter a valid email address.</p>
+          <p id="email-error" className={styles.error}>
+            Please enter a valid email address.
+          </p>
         )}
 
         <label className={`${styles.inputWrap} ${showPassError ? styles.inputError : ""}`}>
+          <span className="visually-hidden">Password</span>
           <input
             className={styles.input}
-            placeholder="Enter Your Password"
+            placeholder="Password"
             type="password"
-            aria-label="Enter Your Password"
+            aria-label="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onBlur={() => setTouchedPassword(true)}
@@ -135,7 +147,9 @@ export default function Login() {
           />
         </label>
         {showPassError && (
-          <p id="password-error" className={styles.error}>Password must be at least 6 characters.</p>
+          <p id="password-error" className={styles.error}>
+            Password must be at least 6 characters.
+          </p>
         )}
 
         <div className={styles.forgotRow}>
@@ -152,22 +166,17 @@ export default function Login() {
               navigate(`/auth/forgot-password${qs}`);
             }}
           >
-            Forgot Password?
+            Forgot password?
           </button>
         </div>
 
         <button
           className={styles.cta}
           type="submit"
-          style={{
-            background: colors.accent,
-            color: colors.white,
-            opacity: formValid && !isSubmitting ? 1 : 0.6,
-          }}
           disabled={!formValid || isSubmitting}
           aria-disabled={!formValid || isSubmitting}
         >
-          {isSubmitting ? "Logging In…" : "Log In"}
+          {isSubmitting ? "Signing you in…" : "Enter the dashboard"}
         </button>
         {loginError ? (
           <p className={styles.error} role="alert">
@@ -177,12 +186,12 @@ export default function Login() {
       </form>
 
       <div className={styles.socialBlock}>
-        <div className={styles.socialTitle}>Log In with</div>
+        <div className={styles.socialTitle}>Or continue with</div>
         <div className={styles.socialRow}>
-          <button type="button" className={styles.socialBtn} aria-label="Log In With Apple">
+          <button type="button" className={styles.socialBtn} aria-label="Log in with Apple">
             <img src={appleLogo} alt="Apple" className={styles.logo} />
           </button>
-          <button type="button" className={styles.socialBtn} aria-label="Log In With Google">
+          <button type="button" className={styles.socialBtn} aria-label="Log in with Google">
             <img src={googleLogo} alt="Google" className={styles.logo} />
           </button>
         </div>
@@ -190,25 +199,21 @@ export default function Login() {
 
       {role === "consumer" ? (
         <div className={styles.guestBlock}>
-          <p className={styles.guestNote}>Just browsing? Continue as a guest.</p>
+          <p className={styles.guestNote}>Need a quick preview? Continue as a guest.</p>
           <button type="button" className={styles.guestBtn} onClick={handleGuest}>
-            Continue as Guest
+            Guest view
           </button>
         </div>
       ) : null}
 
-      {/* Quick static login (provider / consumer) */}
-      {/* Removed Quick Login (Demo) buttons to avoid static role shortcuts */}
-
       <p className={styles.foot}>
-        Not Registered Yet?{" "}
-        <Link
-          to={`/auth/signup${role ? `?role=${role}` : ""}`}
-          className={styles.link}
-        >
-          Sign Up
+        New here?{" "}
+        <Link to={`/auth/signup${role ? `?role=${role}` : ""}`} className={styles.link}>
+          Create an account
         </Link>
       </p>
+
+      <p className={styles.supportFoot}>Securely encrypted • Trusted by UAE venues • WhatsApp +971 50 123 4567</p>
     </section>
   );
 }
