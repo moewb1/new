@@ -51,6 +51,7 @@ const roleContent: Record<
 
 export default function AuthEntry() {
   const [role, setRole] = useState<Role | null>(null);
+  const [language, setLanguage] = useState<Language>("English");
   const navigate = useNavigate();
 
   useRedirectIfAuthenticated("/home");
