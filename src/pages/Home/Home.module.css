@@ -60,9 +60,10 @@
   bottom: -12%;
   width: clamp(180px, 28vw, 320px);
   height: clamp(180px, 28vw, 320px);
-  background: radial-gradient(circle at center, rgba(212, 165, 116, 0.7) 0%, rgba(212, 165, 116, 0) 72%);
+  background: radial-gradient(circle at center, rgba(212, 165, 116, 0.7) 0%, rgba(212, 165, 116, 0) 72%),
+    url("../../styles/Logo.png") center/68% no-repeat;
   pointer-events: none;
-  opacity: 0.9;
+  opacity: 0.7;
 }
 
 
@@ -78,6 +79,37 @@
 
 /* Greeting */
 .helloBlock { display: grid; gap: clamp(12px, 2vw, 18px); }
+.brandHeader {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: clamp(12px, 2vw, 20px);
+}
+.brandLogo {
+  width: clamp(72px, 8vw, 96px);
+  height: auto;
+  filter: drop-shadow(0 12px 26px rgba(10, 15, 25, 0.35));
+}
+.brandTaglineGroup {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.brandTitle {
+  font-family: var(--font-headline);
+  font-size: clamp(1.8rem, 3.2vw, 2.4rem);
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-warm-cream);
+}
+.brandTagline {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: clamp(0.9rem, 1.6vw, 1rem);
+  color: rgba(242, 237, 218, 0.82);
+  max-width: clamp(240px, 36vw, 320px);
+}
 .greetingLine { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .greeting {
   font-family: var(--font-headline);
@@ -98,7 +130,7 @@
   font-family: var(--font-body);
   font-size: clamp(1rem, 2vw, 1.15rem);
   color: rgba(242, 237, 218, 0.82);
-  max-width: 520px;
+  max-width: clamp(360px, 60vw, 560px);
 }
 .roleBadge {
   margin-left: 0;

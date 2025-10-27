@@ -5,7 +5,8 @@ import Autoplay from "embla-carousel-autoplay";
 import styles from "./AuthEntry.module.css";
 import AuthChoiceCard from "@/components/AuthChoiceCard/AuthChoiceCard";
 import { useRedirectIfAuthenticated } from "@/hooks/useRedirectIfAuthenticated";
-import recruitMeLogo from "@/assets/recruitme-logo.svg";
+import { type Language } from "@/services/metaService";
+import khidmaLogo from "@/styles/Logo.png";
 
 type Role = "provider" | "consumer";
 
@@ -16,16 +17,16 @@ type Slide = {
 
 const slides: Slide[] = [
   {
-    title: "YOUR STAFFING SOLUTION, SORTED",
-    desc: "Find your crew in minutes with verified professionals ready for every service moment.",
+    title: "STAFF READY WHEN YOUR EVENT IS",
+    desc: "Discover hospitality pros who are vetted, punctual, and polished for every guest touchpoint.",
   },
   {
-    title: "TALENT ON TAP",
-    desc: "Quality talent, zero drama. Transparent rates, instant chat, and real event photography.",
+    title: "MANAGE CREWS WITH CONFIDENCE",
+    desc: "Coordinate shifts, chat instantly, and review credentials without leaving the dashboard.",
   },
   {
-    title: "EVENT TOMORROW? WE'VE GOT YOU COVERED",
-    desc: "WhatsApp our business desk and we rally vetted experts with bank-grade protection.",
+    title: "SUPPORT THAT NEVER SLEEPS",
+    desc: "Message the Khidma concierge and we line up experts across the UAE in record time.",
   },
 ];
 
@@ -36,9 +37,9 @@ const roleContent: Record<
   consumer: {
     label: "Find Talent",
     highlight: "Build my crew",
-    roleBadge: "Client / Recruiter",
+    roleBadge: "Client / Venue",
     description:
-      "Build your event roster in under three minutes with trusted professionals and transparent pricing.",
+      "Curate your hospitality roster in minutes with trusted professionals and transparent pricing.",
   },
   provider: {
     label: "Offer My Skills",
@@ -88,18 +89,18 @@ export default function AuthEntry() {
     <section className={styles.wrapper}>
       <header className={styles.headerRow}>
         <div className={styles.brandGroup}>
-          <img src={recruitMeLogo} alt="Recruit Me" className={styles.logoImage} />
-          <p className={styles.tagline}>Where talent meets opportunity.</p>
+          <img src={khidmaLogo} alt="Khidma" className={styles.logoImage} />
+          <p className={styles.tagline}>Refined hospitality staffing for premium experiences.</p>
         </div>
         <p className={styles.localeNote}>Platform available in English • Serving venues across the UAE</p>
       </header>
 
       <div className={`${styles.hero} brand-spotlight`}>
         <div className={styles.heroContent}>
-          <h1 className={styles.heroHeadline}>THE STAFFING PLATFORM THAT ACTUALLY WORKS</h1>
+          <h1 className={styles.heroHeadline}>THE HOSPITALITY STAFFING PLATFORM FOR MODERN BRANDS</h1>
           <p className={styles.heroSub}>
             Find quality crew in minutes, not days. Progressive onboarding, verified licences, and secure payouts backed
-            by our UAE partners.
+            by Khidma’s UAE concierge.
           </p>
           <div className={styles.heroActions}>
             <button type="button" className={styles.heroButton} onClick={onNext} disabled={!role}>
@@ -131,7 +132,7 @@ export default function AuthEntry() {
         </div>
       </section>
 
-      <section className={styles.carousel} aria-label="Why teams choose Recruit Me">
+      <section className={styles.carousel} aria-label="Why teams choose Khidma">
         <div className={styles.embla} ref={emblaRef}>
           <div className={styles.emblaContainer}>
             {slides.map((slide, i) => (

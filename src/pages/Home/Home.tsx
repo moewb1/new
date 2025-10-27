@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import styles from "./Home.module.css";
 import { useNavigate } from "react-router-dom";
+import khidmaLogo from "@/styles/Logo.png";
 import {
   CONSUMER_JOBS_UPDATED_EVENT,
   getConsumerJobsSummary,
@@ -467,7 +468,7 @@ const SEED_NOTIFS: Notif[] = [
   { id: "n17", title: "New job near you",     body: "Night Security at City Walk.",            timeISO: ago(3800), unread: true  },
   { id: "n18", title: "Application update",   body: "Café Latté declined your application.",   timeISO: ago(4100), unread: false },
   { id: "n19", title: "Payment method",       body: "Add a backup bank account.",              timeISO: ago(4700), unread: false },
-  { id: "n20", title: "Chat message",         body: "Recruiter: Can you start Friday?",        timeISO: ago(5200), unread: true  },
+  { id: "n20", title: "Chat message",         body: "Khidma concierge: Can you start Friday?", timeISO: ago(5200), unread: true  },
   { id: "n21", title: "New job near you",     body: "Event Planner Assistant (weekend).",      timeISO: ago(5800), unread: false },
   { id: "n22", title: "System",               body: "We’ve updated our Terms.",                timeISO: ago(8000), unread: false },
 ];
@@ -658,13 +659,20 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
       <div className={styles.hero}>
         <div className={styles.heroTop}>
           <div className={styles.helloBlock}>
+            <div className={styles.brandHeader}>
+              <img src={khidmaLogo} alt="Khidma" className={styles.brandLogo} />
+              <div className={styles.brandTaglineGroup}>
+                <span className={styles.brandTitle}>Khidma</span>
+                <span className={styles.brandTagline}>Hospitality talent, ready when you are.</span>
+              </div>
+            </div>
             <div className={styles.greetingLine}>
               <span className={styles.greeting}>{greeting},</span>
               <span className={styles.name}>{displayName}</span>
               {roleBadgeLabel ? <span className={styles.roleBadge}>{roleBadgeLabel}</span> : null}
             </div>
 
-            <p className={styles.heroSubtitle}>Recruit Me keeps your opportunities front and center.</p>
+            <p className={styles.heroSubtitle}>Khidma keeps your opportunities front and center and your crew one tap away.</p>
 
             {guestConsumer ? (
               <div className={styles.guestInfoPill}>Guest mode • Sign in to add your location</div>
