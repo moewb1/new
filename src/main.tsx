@@ -1,4 +1,3 @@
-import "@fontsource-variable/inter";
 import "@fontsource/space-mono/400.css";
 import "@fontsource/space-mono/700.css";
 import { StrictMode } from "react";

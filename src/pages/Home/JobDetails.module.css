@@ -64,7 +64,7 @@
   padding: 6px 12px;
   border-radius: 999px;
   font-weight: 800;
-  font-size: 12px;
+  font-size: var(--text-label-size);
   background: rgba(15, 23, 42, 0.06);
 }
 .jobHeroStatus {
@@ -73,7 +73,7 @@
   padding: 6px 12px;
   border-radius: 999px;
   font-weight: 800;
-  font-size: 12px;
+  font-size: var(--text-label-size);
   border: 1px solid transparent;
 }
 .jobHeroStatus_open { background: rgba(59, 130, 246, 0.14); color: #1d4ed8; border-color: rgba(59, 130, 246, 0.32); }
@@ -107,7 +107,7 @@
 }
 .jobHeroStat span {
   font-weight: 600;
-  font-size: 12px;
+  font-size: var(--text-small-size);
   color: var(--muted);
 }
 .jobHeroStat strong {
@@ -137,7 +137,7 @@
   border-radius: 999px;
   background: rgba(15, 23, 42, 0.08);
   font-weight: 700;
-  font-size: 12px;
+  font-size: var(--text-label-size);
 }
 
 .scheduleDayList {
@@ -245,10 +245,10 @@
   border: 1px solid rgba(15, 23, 42, 0.12);
   background: rgba(15, 23, 42, 0.05);
   font-weight: 800;
-  font-size: 12px;
+  font-size: var(--text-label-size);
 }
 .capacityDivider { opacity: 0.6; }
-.capacityCaption { font-weight: 700; opacity: 0.6; font-size: 11px; text-transform: uppercase; }
+.capacityCaption { font-weight: 700; opacity: 0.6; font-size: var(--text-label-size); text-transform: uppercase; }
 .serviceStatsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -261,7 +261,7 @@
   display: grid;
   gap: 4px;
 }
-.serviceStatsGrid dt { margin: 0; font-weight: 700; font-size: 12px; opacity: 0.65; }
+.serviceStatsGrid dt { margin: 0; font-weight: 700; font-size: var(--text-small-size); opacity: 0.65; }
 .serviceStatsGrid dd { margin: 0; font-weight: 900; font-size: 15px; }
 .serviceCountries { display: flex; flex-wrap: wrap; gap: 6px; }
 .serviceCountries { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -270,7 +270,7 @@
   border-radius: 999px;
   border: 1px solid rgba(15, 23, 42, 0.1);
   font-weight: 700;
-  font-size: 12px;
+  font-size: var(--text-label-size);
   background: rgba(255, 255, 255, 0.9);
 }
 .serviceRateList { display: grid; gap: 6px; margin-top: 6px; }
@@ -282,11 +282,11 @@
   border-radius: 10px;
   background: rgba(15,23,42,0.08);
   font-weight: 700;
-  font-size: 12px;
+  font-size: var(--text-small-size);
 }
 .serviceRateValue { margin-left: auto; font-weight: 800; }
 .appliedCountries { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
-.appliedLabel { font-weight: 700; font-size: 12px; opacity: 0.7; }
+.appliedLabel { font-weight: 700; font-size: var(--text-label-size); opacity: 0.7; }
 .providerServiceStats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -301,7 +301,7 @@
 }
 .providerServiceStats span {
   font-weight: 600;
-  font-size: 12px;
+  font-size: var(--text-small-size);
   color: var(--muted);
 }
 .providerServiceStats strong {
@@ -376,7 +376,7 @@
   padding: 0 8px;
   border-radius: 999px;
   font-weight: 800;
-  font-size: 12px;
+  font-size: var(--text-label-size);
   background: rgba(15, 23, 42, 0.08);
 }
 
@@ -412,7 +412,7 @@
   padding: 6px 10px;
   border-radius: 999px;
   font-weight: 800;
-  font-size: 12px;
+  font-size: var(--text-label-size);
   border: 1px solid transparent;
 }
 .appStatus_pending { color: #92400e; background: rgba(217, 119, 6, 0.16); border-color: rgba(217, 119, 6, 0.3); }

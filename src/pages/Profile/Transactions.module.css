@@ -71,7 +71,7 @@
 
 .summaryLabel {
   font-weight: 700;
-  font-size: 12px;
+  font-size: var(--text-label-size);
   color: rgba(15, 23, 42, 0.6);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -154,7 +154,7 @@
 
 .table th {
   font-weight: 800;
-  font-size: 12px;
+  font-size: var(--text-label-size);
   text-transform: uppercase;
   color: rgba(15, 23, 42, 0.6);
   letter-spacing: 0.08em;
@@ -189,7 +189,7 @@
 
 .serviceText { display: grid; gap: 2px; }
 .serviceTitle { font-weight: 900; color: #0f172a; }
-.serviceCategory { font-weight: 600; font-size: 12px; color: rgba(15, 23, 42, 0.6); text-transform: capitalize; }
+.serviceCategory { font-weight: 600; font-size: var(--text-small-size); color: rgba(15, 23, 42, 0.6); text-transform: capitalize; }
 
 .datePrimary {
   display: block;
@@ -200,7 +200,7 @@
 .dateSecondary {
   display: block;
   font-weight: 600;
-  font-size: 12px;
+  font-size: var(--text-small-size);
   color: rgba(15, 23, 42, 0.55);
 }
 

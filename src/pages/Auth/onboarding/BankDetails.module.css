@@ -39,7 +39,7 @@
 
 .badge {
   font-weight: 800;
-  font-size: 12px;
+  font-size: var(--text-label-size);
   padding: 4px 8px;
   border-radius: 999px;
   background: #f1f5f9; /* slate-100 */
@@ -82,7 +82,7 @@
 }
 .charCount {
   font-weight: 800;
-  font-size: 12px;
+  font-size: var(--text-label-size);
   opacity: 0.75;
 }
 
@@ -165,7 +165,7 @@
   .sub { font-size: 14px; }
   .box { padding: 18px; border-radius: 14px; }
   .emoji { font-size: 16px; }
-  .badge { font-size: 11px; padding: 3px 8px; }
+  .badge { font-size: var(--text-label-size); padding: 3px 8px; }
   .rules { padding: 8px 10px; gap: 6px; }
   .rules li { font-size: 14px; }
 }

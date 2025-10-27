@@ -170,7 +170,7 @@
 /* address chip overlay at bottom */
 .addrChip {
   position: absolute;
-  font-size: 12px;
+  font-size: var(--text-small-size);
   left: 12px;
   right: 12px;
   bottom: 12px;
@@ -247,7 +247,7 @@
   transform: translateY(-1px);
 }
 
-.help { margin: 4px 0 0; font-size: 12px; opacity: .7; font-weight: 600; }
+.help { margin: 4px 0 0; font-size: var(--text-small-size); opacity: .7; font-weight: 600; }
 
 /* Quick actions row */
 .quickRow { display: flex; gap: 8px; flex-wrap: wrap; }

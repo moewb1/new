@@ -35,7 +35,7 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: var(--ink);
-  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-family: var(--font-body);
   overflow: hidden; /* <- ensure no outer scrollbars */
 }
 
@@ -136,7 +136,7 @@
 .rail-main{ overflow:hidden; }
 .row1{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .name{ font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.time{ font-weight: 800; color: var(--muted); font-size: 12px; }
+.time{ font-weight: 800; color: var(--muted); font-size: var(--text-label-size); }
 .row2{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:2px; }
 .preview{ color: var(--muted); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -144,7 +144,7 @@
   display:inline-grid; place-items:center; min-width:20px; height:20px; padding:0 6px;
   border-radius:999px; background: var(--pill); color: var(--ink);
   border: 1px solid rgba(0,0,0,.06);
-  font-weight: 900; font-size: 12px;
+  font-weight: 900; font-size: var(--text-label-size);
 }
 
 /* ---- Thread ---- */
@@ -252,7 +252,7 @@
 }
 
 .neo-text{ font-weight: 700; color: var(--ink); white-space: pre-wrap; word-break: break-word; }
-.neo-meta{ margin-top: 4px; font-size: 12px; font-weight: 800; color: var(--muted); }
+.neo-meta{ margin-top: 4px; font-size: var(--text-label-size); font-weight: 800; color: var(--muted); }
 
 /* Typing */
 .neo-bubble.typing{

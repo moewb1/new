@@ -137,7 +137,7 @@
 .pond {
   --filepond--color-primary: rgb(169,174,155);
   --filepond--color-primary-hover: rgb(150,155,140);
-  --filepond--font-size: 12px;
+  --filepond--font-size: var(--text-small-size);
   --filepond--border-radius: 12px;
   --filepond--panel-radius: 12px;
   --filepond--panel-border-radius: 12px;
