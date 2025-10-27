@@ -119,7 +119,7 @@
 }
 .brandTitle {
   font-family: var(--font-headline);
-  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-size: var(--text-subtitle-size);
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -127,33 +127,34 @@
 }
 .brandTagline {
   font-family: var(--font-body);
-  font-weight: 600;
-  font-size: clamp(0.9rem, 1.6vw, 1rem);
+  font-weight: 500;
+  font-size: var(--text-small-size);
   color: rgba(242, 237, 218, 0.82);
   max-width: clamp(240px, 36vw, 320px);
+  line-height: var(--text-line-height-snug);
 }
 .greetingLine { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .greeting {
   font-family: var(--font-headline);
   font-weight: 400;
-  font-size: clamp(1.4rem, 3.2vw, 2.2rem);
+  font-size: var(--text-subtitle-size);
   color: var(--color-warm-cream);
   letter-spacing: 0.01em;
 }
 .name {
   font-family: var(--font-headline);
   font-weight: 600;
-  font-size: clamp(1.6rem, 3.6vw, 2.6rem);
+  font-size: var(--text-title-size);
   color: var(--color-golden-hour);
   letter-spacing: 0.015em;
 }
 .heroSubtitle {
   margin: 0;
   font-family: var(--font-body);
-  font-size: clamp(0.95rem, 1.8vw, 1.1rem);
+  font-size: var(--text-body-size);
   color: rgba(242, 237, 218, 0.78);
   max-width: clamp(360px, 60vw, 560px);
-  line-height: 1.5;
+  line-height: var(--text-line-height-relaxed);
 }
 
 .helloBlock > .heroSubtitle {
@@ -161,7 +162,7 @@
 }
 .roleBadge {
   margin-left: 0;
-  font-size: clamp(0.75rem, 1.4vw, 0.9rem);
+  font-size: var(--text-label-size);
   padding: 6px 12px;
   border-radius: 999px;
   background: rgba(242, 237, 218, 0.16);
@@ -178,6 +179,7 @@
   padding: 12px 16px; border-radius: 999px; background: rgba(242, 237, 218, 0.15);
   border: 1px solid rgba(242, 237, 218, 0.35); box-shadow: 0 14px 44px rgba(10, 15, 25, 0.32);
   font-weight: 700; color: var(--color-warm-cream); cursor: pointer;
+  font-size: var(--text-body-size);
   transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background 180ms ease;
 }
 .locationPill:hover {
@@ -187,7 +189,14 @@
   background: rgba(242, 237, 218, 0.22);
 }
 .locIcon { width: 20px; height: 20px; fill: var(--color-golden-hour); opacity: 0.9; }
-.locationText { max-width: 72vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.locationText {
+  max-width: 72vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-body-size);
+  line-height: var(--text-line-height-snug);
+}
 .guestInfoPill {
   display: inline-flex;
   align-items: center;
@@ -197,7 +206,10 @@
   background: rgba(138, 158, 139, 0.22);
   border: 1px dashed rgba(242, 237, 218, 0.55);
   color: var(--color-warm-cream);
-  font-weight: 700;
+  font-weight: 600;
+  font-size: var(--text-small-size);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 /* Buttons in header */
