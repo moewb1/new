@@ -1,7 +1,6 @@
 import React from "react";
 import styles from "./Signup.module.css";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import colors from "@/styles/colors";
 import { startGuestSession } from "@/utils/auth";
 import { useRedirectIfAuthenticated } from "@/hooks/useRedirectIfAuthenticated";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -11,13 +10,13 @@ import {
   type SignupPayload,
 } from "@/store/slices/authSlice";
 
-/* your assets */
 import appleLogo from "@/assets/Apple_logo.svg";
 import googleLogo from "@/assets/Google_logo.svg.webp";
 
-// safe className combiner
-const cx = (...list: Array<string | false | null | undefined>) =>
-  list.filter(Boolean).join(" ");
+const cx = (...list: Array<string | false | null | undefined>) => list.filter(Boolean).join(" ");
+
+const languageOptions = ["English", "العربية", "हिन्दी"] as const;
+type LanguageOption = (typeof languageOptions)[number];
 
 export default function Signup() {
   const [search] = useSearchParams();
@@ -25,38 +24,37 @@ export default function Signup() {
   const dispatch = useAppDispatch();
   const signupRequest = useAppSelector((state) => state.auth.signup);
 
-  const role = search.get("role"); // "provider" | "consumer" | null
+  const role = search.get("role");
   useRedirectIfAuthenticated("/home");
 
   const roleLabel =
-    role === "provider" ? "Service Provider" :
-    role === "consumer" ? "Consumer" :
-    null;
-  const cta = roleLabel ? `Sign Up As ${roleLabel}` : "Sign Up";
+    role === "provider" ? "Service Provider" : role === "consumer" ? "Client" : null;
+  const cta = roleLabel ? `Create account as ${roleLabel}` : "Create your account";
 
   const [firstName, setFirstName] = React.useState("");
-  const [lastName, setLastName]   = React.useState("");
-  const [email, setEmail]         = React.useState("");
-  const [password, setPassword]   = React.useState("");
+  const [lastName, setLastName] = React.useState("");
+  const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [preferredLanguage, setPreferredLanguage] = React.useState<LanguageOption>("English");
+  const [acceptTerms, setAcceptTerms] = React.useState(false);
 
-  const [tFirst, setTFirst]   = React.useState(false);
-  const [tLast, setTLast]     = React.useState(false);
-  const [tEmail, setTEmail]   = React.useState(false);
-  const [tPass, setTPass]     = React.useState(false);
+  const [tFirst, setTFirst] = React.useState(false);
+  const [tLast, setTLast] = React.useState(false);
+  const [tEmail, setTEmail] = React.useState(false);
+  const [tPass, setTPass] = React.useState(false);
   const [submitted, setSubmitted] = React.useState(false);
 
-  // --- validation rules ---
   const isValidFirst = firstName.trim().length >= 2;
-  const isValidLast  = lastName.trim().length >= 2;
+  const isValidLast = lastName.trim().length >= 2;
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-  const isValidPass  = password.length >= 6;
+  const isValidPass = password.length >= 6;
 
-  const showFirstErr = (tFirst  || submitted) && !isValidFirst;
-  const showLastErr  = (tLast   || submitted) && !isValidLast;
-  const showEmailErr = (tEmail  || submitted) && !isValidEmail;
-  const showPassErr  = (tPass   || submitted) && !isValidPass;
+  const showFirstErr = (tFirst || submitted) && !isValidFirst;
+  const showLastErr = (tLast || submitted) && !isValidLast;
+  const showEmailErr = (tEmail || submitted) && !isValidEmail;
+  const showPassErr = (tPass || submitted) && !isValidPass;
 
-  const isFormValid = isValidFirst && isValidLast && isValidEmail && isValidPass;
+  const isFormValid = isValidFirst && isValidLast && isValidEmail && isValidPass && acceptTerms;
 
   const handleGuest = React.useCallback(() => {
     if (role !== "consumer") return;
@@ -77,8 +75,7 @@ export default function Signup() {
     setSubmitted(true);
     if (!isFormValid || signupRequest.status === "loading") return;
 
-    const normalisedRole =
-      role === "provider" || role === "consumer" ? role : undefined;
+    const normalisedRole = role === "provider" || role === "consumer" ? role : undefined;
 
     const payload: SignupPayload = {
       fname: firstName.trim(),
@@ -97,7 +94,7 @@ export default function Signup() {
       `/auth/otp?email=${encodeURIComponent(payload.email)}&flow=signup${
         normalisedRole ? `&role=${normalisedRole}` : ""
       }`,
-      { state: { signupForm: payload } }
+      { state: { signupForm: payload, preferredLanguage } }
     );
   };
 
@@ -106,23 +103,40 @@ export default function Signup() {
 
   return (
     <section className={styles.wrapper}>
-      {/* Top title only */}
-      <header className={styles.header}>
-        <h1 className={styles.h1}>Sign Up</h1>
-      </header>
-
-      {/* Left-aligned intro right above the form */}
-      <div className={styles.intro}>
-        <p className={styles.desc}>Please Enter your Information and create your account</p>
+      <div className={styles.progressHeader}>
+        <div className={styles.progressCopy}>
+          <span className={styles.progressLabel}>Step 1 of 3</span>
+          <h1 className={styles.h1}>Join the Network</h1>
+          <p className={styles.desc}>Takes 3 minutes. Start earning today.</p>
+        </div>
+        <div className={styles.progressBar}>
+          <span className={styles.progressFill} aria-hidden="true" />
+        </div>
       </div>
 
       <form className={styles.box} onSubmit={onSubmit} noValidate>
-        {/* First name */}
+        <div className={styles.languageField}>
+          <label htmlFor="signup-language">Preferred language</label>
+          <select
+            id="signup-language"
+            className={styles.select}
+            value={preferredLanguage}
+            onChange={(event) => setPreferredLanguage(event.target.value as LanguageOption)}
+          >
+            {languageOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <label className={cx(styles.inputWrap, showFirstErr && styles.inputError)}>
+          <span className="visually-hidden">First Name</span>
           <input
             className={styles.input}
-            placeholder="First Name"
-            aria-label="First Name"
+            placeholder="First name"
+            aria-label="First name"
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
             onBlur={() => setTFirst(true)}
@@ -137,12 +151,12 @@ export default function Signup() {
           </p>
         )}
 
-        {/* Last name */}
         <label className={cx(styles.inputWrap, showLastErr && styles.inputError)}>
+          <span className="visually-hidden">Last Name</span>
           <input
             className={styles.input}
-            placeholder="Last Name"
-            aria-label="Last Name"
+            placeholder="Last name"
+            aria-label="Last name"
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
             onBlur={() => setTLast(true)}
@@ -157,13 +171,13 @@ export default function Signup() {
           </p>
         )}
 
-        {/* Email */}
         <label className={cx(styles.inputWrap, showEmailErr && styles.inputError)}>
+          <span className="visually-hidden">Email</span>
           <input
             className={styles.input}
-            placeholder="Enter Your Mail"
+            placeholder="Work email"
             type="email"
-            aria-label="Enter Your Mail"
+            aria-label="Work email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             onBlur={() => setTEmail(true)}
@@ -179,13 +193,13 @@ export default function Signup() {
           </p>
         )}
 
-        {/* Password */}
         <label className={cx(styles.inputWrap, showPassErr && styles.inputError)}>
+          <span className="visually-hidden">Password</span>
           <input
             className={styles.input}
-            placeholder="Enter Your Password"
+            placeholder="Create password"
             type="password"
-            aria-label="Enter Your Password"
+            aria-label="Create password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onBlur={() => setTPass(true)}
@@ -201,14 +215,26 @@ export default function Signup() {
           </p>
         )}
 
+        <label className={styles.checkboxRow}>
+          <input
+            type="checkbox"
+            checked={acceptTerms}
+            onChange={(event) => setAcceptTerms(event.target.checked)}
+            required
+          />
+          <span>
+            I agree to the
+            {" "}
+            <a href="#terms">Terms & Conditions</a>
+            {" "}and
+            {" "}
+            <a href="#privacy">Privacy Policy</a>.
+          </span>
+        </label>
+
         <button
           className={styles.cta}
           type="submit"
-          style={{
-            background: colors.accent,
-            color: colors.white,
-            opacity: isFormValid && !isSubmitting ? 1 : 0.6,
-          }}
           disabled={!isFormValid || isSubmitting}
           aria-disabled={!isFormValid || isSubmitting}
         >
@@ -222,12 +248,12 @@ export default function Signup() {
       </form>
 
       <div className={styles.socialBlock}>
-        <div className={styles.socialTitle}>Sign Up with</div>
+        <div className={styles.socialTitle}>Or sign up with</div>
         <div className={styles.socialRow}>
-          <button type="button" className={styles.socialBtn} aria-label="Sign Up With Apple">
+          <button type="button" className={styles.socialBtn} aria-label="Sign up with Apple">
             <img src={appleLogo} alt="Apple" className={styles.logo} />
           </button>
-          <button type="button" className={styles.socialBtn} aria-label="Sign Up With Google">
+          <button type="button" className={styles.socialBtn} aria-label="Sign up with Google">
             <img src={googleLogo} alt="Google" className={styles.logo} />
           </button>
         </div>
@@ -243,9 +269,13 @@ export default function Signup() {
       ) : null}
 
       <p className={styles.foot}>
-        Already have an Account?{" "}
-        <Link to={`/auth/login${role ? `?role=${role}` : ""}`} className={styles.link}>Log In</Link>
+        Already have an account?{" "}
+        <Link to={`/auth/login${role ? `?role=${role}` : ""}`} className={styles.link}>
+          Back to Business
+        </Link>
       </p>
+
+      <p className={styles.supportFoot}>Need help? WhatsApp our business line at +971 50 123 4567.</p>
     </section>
   );
 }
