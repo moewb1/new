@@ -1,12 +1,9 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import styles from "./AuthEntry.module.css";
 import AuthChoiceCard from "@/components/AuthChoiceCard/AuthChoiceCard";
-import colors from "@/styles/colors";
-import hand from "@/assets/hand.png";
-import service from "@/assets/service.png";
 import { useRedirectIfAuthenticated } from "@/hooks/useRedirectIfAuthenticated";
 
 type Role = "provider" | "consumer";
@@ -18,17 +15,41 @@ type Slide = {
 
 const slides: Slide[] = [
   {
-    title: "Explanation Of Available Services",
-    desc: "Waitress, Security, Hostess, Merchandise, Etc",
+    title: "YOUR STAFFING SOLUTION, SORTED",
+    desc: "Find your crew in minutes with verified professionals ready for every service moment.",
   },
   {
-    title: "We Offer You A Systems",
-    desc: "There Will Be Systems Of Payment Process, Chat Support, And Ratings",
+    title: "TALENT ON TAP",
+    desc: "Quality talent, zero drama. Transparent rates, instant chat, and real event photography.",
+  },
+  {
+    title: "EVENT TOMORROW? WE'VE GOT YOU COVERED",
+    desc: "WhatsApp our business desk and we rally vetted experts with bank-grade protection.",
   },
 ];
 
+const languageOptions = ["English", "العربية", "हिन्दी"] as const;
+
+type Language = (typeof languageOptions)[number];
+
+const roleContent: Record<Role, { label: string; highlight: string; description: string }> = {
+  consumer: {
+    label: "Find Talent",
+    highlight: "I need an expert crew",
+    description:
+      "Build your event roster in under three minutes with trusted professionals and transparent pricing.",
+  },
+  provider: {
+    label: "Offer My Skills",
+    highlight: "I'm ready to work",
+    description:
+      "Showcase your licences, set your availability, and get booked by premium venues and brands.",
+  },
+};
+
 export default function AuthEntry() {
   const [role, setRole] = useState<Role | null>(null);
+  const [language, setLanguage] = useState<Language>("English");
   const navigate = useNavigate();
 
   useRedirectIfAuthenticated("/home");
@@ -38,10 +59,12 @@ export default function AuthEntry() {
     navigate(`/auth/signup?role=${role}`);
   };
 
-  const [emblaRef, emblaApi] = useEmblaCarousel(
-    { loop: true, align: "start", skipSnaps: false },
-    [Autoplay({ delay: 3500, stopOnInteraction: false, stopOnMouseEnter: true })]
+  const autoplay = useMemo(
+    () => Autoplay({ delay: 5000, stopOnInteraction: false, stopOnMouseEnter: true }),
+    []
   );
+
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, align: "start" }, [autoplay]);
   const [selected, setSelected] = useState(0);
   const [snaps, setSnaps] = useState<number[]>([]);
 
@@ -53,45 +76,77 @@ export default function AuthEntry() {
     onSelect();
   }, [emblaApi]);
 
-  const scrollPrev = useCallback(() => emblaApi && emblaApi.scrollPrev(), [emblaApi]);
-  const scrollNext = useCallback(() => emblaApi && emblaApi.scrollNext(), [emblaApi]);
-  const scrollTo = useCallback(
-    (idx: number) => emblaApi && emblaApi.scrollTo(idx),
-    [emblaApi]
-  );
+  const scrollPrev = useCallback(() => emblaApi?.scrollPrev(), [emblaApi]);
+  const scrollNext = useCallback(() => emblaApi?.scrollNext(), [emblaApi]);
+  const scrollTo = useCallback((idx: number) => emblaApi?.scrollTo(idx), [emblaApi]);
+
+  const nextLabel = role ? `Get started as ${roleContent[role].label}` : "Choose how you want to start";
 
   return (
     <section className={styles.wrapper}>
-      <div className={styles.hero}>
-        <h1 className={styles.h1}>Please Choose Once</h1>
-        <p className={styles.tagline}>Select One And Tell Us Who Are You, Thanks!!</p>
+      <header className={styles.headerRow}>
+        <span className={styles.logoMark}>
+          talent<span className={styles.logoAccent}>on</span>tap
+        </span>
+        <nav className={styles.languageToggle} aria-label="Choose language">
+          {languageOptions.map((lang) => (
+            <button
+              key={lang}
+              type="button"
+              className={styles.languageButton}
+              data-active={language === lang ? "true" : "false"}
+              onClick={() => setLanguage(lang)}
+            >
+              {lang}
+            </button>
+          ))}
+        </nav>
+      </header>
+
+      <div className={`${styles.hero} brand-spotlight`}>
+        <div className={styles.heroContent}>
+          <h1 className={styles.heroHeadline}>THE STAFFING PLATFORM THAT ACTUALLY WORKS</h1>
+          <p className={styles.heroSub}>
+            Find quality crew in minutes, not days. Progressive onboarding, verified licences, and secure payouts backed
+            by our UAE partners.
+          </p>
+          <div className={styles.heroActions}>
+            <button type="button" className={styles.heroButton} onClick={onNext} disabled={!role}>
+              GET STARTED
+            </button>
+            <span className={styles.heroSupport}>WhatsApp Business support • +971 50 123 4567</span>
+          </div>
+        </div>
       </div>
 
-      {/* Choice cards */}
-      <div className={styles.grid} role="radiogroup" aria-label="Choose Your Role">
-        <AuthChoiceCard
-          title="Provider"
-          imgSrc={service}
-          selected={role === "provider"}
-          onClick={() => setRole(role === "provider" ? null : "provider")}
-        />
-        <AuthChoiceCard
-          title="Consumer"
-          imgSrc={hand}
-          selected={role === "consumer"}
-          onClick={() => setRole(role === "consumer" ? null : "consumer")}
-        />
-      </div>
+      <section className={styles.roleSection}>
+        <div className={styles.roleHeader}>
+          <h2 className={styles.roleTitle}>I'm here to…</h2>
+          <p className={styles.roleCaption}>Select the path that aligns with your goals.</p>
+        </div>
+        <div className={styles.roleGrid} role="radiogroup" aria-label="Choose your starting path">
+          {(Object.keys(roleContent) as Role[]).map((key) => (
+            <AuthChoiceCard
+              key={key}
+              role={key}
+              label={roleContent[key].label}
+              highlight={roleContent[key].highlight}
+              description={roleContent[key].description}
+              selected={role === key}
+              onSelect={(chosen) => setRole((current) => (current === chosen ? null : chosen))}
+            />
+          ))}
+        </div>
+      </section>
 
-      {/* Carousel of info cards */}
-      <div className={styles.carousel}>
+      <section className={styles.carousel} aria-label="Why teams choose Talent On Tap">
         <div className={styles.embla} ref={emblaRef}>
           <div className={styles.emblaContainer}>
-            {slides.map((s, i) => (
-              <div className={styles.emblaSlide} key={i}>
+            {slides.map((slide, i) => (
+              <div className={styles.emblaSlide} key={slide.title}>
                 <article className={styles.infoCard} aria-roledescription="slide">
-                  <h3 className={styles.infoTitle}>{s.title}</h3>
-                  <p className={styles.infoDesc}>{s.desc}</p>
+                  <h3 className={styles.infoTitle}>{slide.title}</h3>
+                  <p className={styles.infoDesc}>{slide.desc}</p>
                 </article>
               </div>
             ))}
@@ -99,16 +154,10 @@ export default function AuthEntry() {
         </div>
 
         <div className={styles.carouselControls}>
-          <button
-            type="button"
-            className={styles.ctrlBtn}
-            onClick={scrollPrev}
-            aria-label="Previous"
-          >
+          <button type="button" className={styles.ctrlBtn} onClick={scrollPrev} aria-label="Previous slide">
             ‹
           </button>
-
-          <div className={styles.dots} role="tablist" aria-label="Slides">
+          <div className={styles.dots} role="tablist" aria-label="Slide selector">
             {snaps.map((_, i) => (
               <button
                 key={i}
@@ -122,28 +171,24 @@ export default function AuthEntry() {
               />
             ))}
           </div>
-
-          <button
-            type="button"
-            className={styles.ctrlBtn}
-            onClick={scrollNext}
-            aria-label="Next"
-          >
+          <button type="button" className={styles.ctrlBtn} onClick={scrollNext} aria-label="Next slide">
             ›
           </button>
         </div>
-      </div>
+      </section>
 
-      <button
-        className={styles.nextBtn}
-        onClick={onNext}
-        disabled={!role}
-        type="button"
-        style={{ background: colors.accent, color: colors.white }}
-        aria-disabled={!role}
-      >
-        Next
-      </button>
+      <footer className={styles.footerNote}>
+        {nextLabel}. By continuing you agree to our {" "}
+        <a className={styles.footerLink} href="#terms">
+          Terms & Conditions
+        </a>{" "}
+        and
+        {" "}
+        <a className={styles.footerLink} href="#privacy">
+          Privacy Policy
+        </a>
+        .
+      </footer>
     </section>
   );
 }

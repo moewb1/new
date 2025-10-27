@@ -61,6 +61,7 @@ type StoredProfile = {
   preferredLanguageIds?: number[];
   nationalityId?: number;
   nationalityCode?: string;
+  licenseType?: "trade" | "professional";
 };
 type LanguageOption = {
   value: number;
@@ -246,7 +247,19 @@ export default function IdentityOnboarding() {
   }, []);
   const role = profile?.role ?? null;
 
+  const storedIdentity = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem("kyc.identity") || "{}");
+    } catch {
+      return {};
+    }
+  }, []);
+
   const [personType, setPersonType] = useState<PersonType>("individual");
+  const [licenseType, setLicenseType] = useState<"trade" | "professional" | null>(() => {
+    const stored = (profile as any)?.licenseType ?? (storedIdentity as any)?.licenseType;
+    return stored === "trade" || stored === "professional" ? stored : null;
+  });
   const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
   const [fullBodyPhotoFile, setFullBodyPhotoFile] = useState<File | null>(null);
   const [sittingPhotoFile, setSittingPhotoFile] = useState<File | null>(null);
@@ -428,7 +441,8 @@ export default function IdentityOnboarding() {
     hasProfilePhoto &&
     hasStandingPhoto &&
     hasSittingPhoto &&
-    languageOk;
+    languageOk &&
+    !!licenseType;
 
   const onContinue = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -525,6 +539,7 @@ export default function IdentityOnboarding() {
         fullBodyPhoto: normalizedStandingPhoto || undefined,
         standingPhoto: normalizedStandingPhoto || undefined,
         sittingPhoto: normalizedSittingPhoto || undefined,
+        licenseType: licenseType || latestProfile.licenseType,
         preferredLanguages:
           uniquePreferredLanguageLabels.length > 0 ? uniquePreferredLanguageLabels : undefined,
         preferredLanguageIds:
@@ -549,6 +564,7 @@ export default function IdentityOnboarding() {
 
       const identity = {
         personType,
+        licenseType,
         dob: dobDate ? toISODateOnly(dobDate) : null,
         nationality: nationality?.label ?? null,
         nationalityCode: nationality?.code ?? null,
@@ -699,12 +715,15 @@ export default function IdentityOnboarding() {
   return (
     <section className={styles.wrapper}>
       <header className={styles.header}>
-        <h1 className={styles.h1}>Identity verification</h1>
+        <h1 className={styles.h1}>Build your profile</h1>
         <p className={styles.sub}>
           {(profile as any)?.role ? (
-            <>Signing up as <b>{(profile as any).role}</b>.</>
+            <>
+              Signing up as <b>{(profile as any).role === "consumer" ? "client" : (profile as any).role}</b>.
+              We use this information to match you with the right opportunities.
+            </>
           ) : (
-            "Tell us about you."
+            "Showcase who you are so we can connect you with the right teams."
           )}
         </p>
       </header>
@@ -733,6 +752,29 @@ export default function IdentityOnboarding() {
               Company
             </button>
           </div>
+        </div>
+
+        <div className={styles.row}>
+          <label className={styles.label}>Licence type</label>
+          <div className={styles.segment}>
+            <button
+              type="button"
+              className={`${styles.segmentBtn} ${licenseType === "trade" ? styles.active : ""}`}
+              onClick={() => setLicenseType("trade")}
+            >
+              Trade License
+            </button>
+            <button
+              type="button"
+              className={`${styles.segmentBtn} ${licenseType === "professional" ? styles.active : ""}`}
+              onClick={() => setLicenseType("professional")}
+            >
+              Professional Certification
+            </button>
+          </div>
+          {submitted && !licenseType ? (
+            <p className={styles.error}>Select the licence type you operate under.</p>
+          ) : null}
         </div>
 
         {/* DOB (react-datepicker, single month) */}

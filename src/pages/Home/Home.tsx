@@ -403,7 +403,11 @@ export default function Home() {
   const preferredLanguage = guestConsumer ? "" : profile?.preferredLanguage || "";
   const isProvider = role === "provider";
   const isConsumer = role === "consumer";
-  const roleBadgeLabel = guestConsumer ? "Guest" : role;
+  const roleBadgeLabel = guestConsumer
+    ? "Guest"
+    : role === "consumer"
+      ? "Client"
+      : "Provider";
 
   const [consumerJobs, setConsumerJobs] = useState<DemoJobSummary[]>(() => getConsumerJobsSummary());
 
@@ -719,7 +723,7 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
               <Icon.Search className={styles.searchIcon} />
               <input
                 className={styles.searchInput}
-                placeholder="Search jobs, categories, or consumers…"
+                placeholder="Search opportunities, crew, or venues…"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 inputMode="search"
@@ -789,9 +793,9 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
       {isConsumer && (
         <div className={styles.createJobCard}>
           <div className={styles.createJobCopy}>
-            <h3 className={styles.createJobTitle}>Need talent fast?</h3>
+            <h3 className={styles.createJobTitle}>Need crew fast?</h3>
             <p className={styles.createJobBody}>
-              Launch a new job post in under a minute and start receiving proposals from trusted professionals.
+              Launch a new opportunity in under a minute and receive interest from vetted professionals ready to work.
             </p>
           </div>
           <button
@@ -800,7 +804,7 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
             aria-label="Create a job"
           >
             <Icon.Application className={styles.createJobIcon} />
-            <span>Create a job</span>
+            <span>Create opportunity</span>
             <Icon.ChevronRight className={styles.createJobArrow} />
           </button>
         </div>
@@ -810,13 +814,13 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
       {isConsumer && (
         <div>
           <div className={styles.jobsHeader}>
-            <h2 className={styles.h2}>My Jobs</h2>
+            <h2 className={styles.h2}>My Opportunities</h2>
             <button
               type="button"
               className={styles.textLinkButton}
               onClick={() => navigate("/my-jobs")}
             >
-              <span>View all</span>
+              <span>View all opportunities</span>
               <Icon.ChevronRight className={styles.textLinkButtonIcon} />
             </button>
           </div>
@@ -824,9 +828,9 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
           <div className={styles.jobPreviewGrid}>
             {consumerJobs.length === 0 ? (
               <div className={styles.emptyState}>
-                <p>You haven't posted any jobs yet.</p>
+                <p>You haven't posted any opportunities yet.</p>
                 <div style={{ height: 10 }} />
-                <button className={styles.primaryBtn} onClick={() => navigate("/jobs/post")}>Post your first job</button>
+                <button className={styles.primaryBtn} onClick={() => navigate("/jobs/post")}>Publish your first opportunity</button>
               </div>
             ) : (
               previewJobs.map((job) => (
@@ -970,7 +974,7 @@ const markAllRead = () => persistNotifs(notifs.map(n => ({ ...n, unread: false }
 
           <div className={styles.centerRow}>
             <div className={styles.jobsHeader}>
-              <h2 className={styles.h2}>Latest Jobs</h2>
+              <h2 className={styles.h2}>Latest Opportunities</h2>
             </div>
           </div>
 

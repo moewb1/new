@@ -1,7 +1,7 @@
 :root {
-  --accent: rgb(169,174,155);
-  --accent-2: rgb(150,155,140);
-  --ink: #4a4d42;
+  --accent: #d4a574;
+  --accent-2: #c48b54;
+  --ink: #3a3e3a;
 }
 /* Page layout — centered */
 .wrapper {
